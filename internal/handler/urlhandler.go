@@ -32,16 +32,16 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 
 	bodyString := string(bodyBytes)
 
-	shortenedUrl, err := h.urlService.ShortenURL(bodyString)
+	shortenedURL, err := h.urlService.ShortenURL(bodyString)
 	if err != nil {
 		http.Error(w, "Error occured while etting shortened url", http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	w.Header().Set("Content-Length", strconv.Itoa(len(shortenedUrl)))
+	w.Header().Set("Content-Length", strconv.Itoa(len(shortenedURL)))
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprint(w, shortenedUrl)
+	fmt.Fprint(w, shortenedURL)
 }
 
 func (h *URLHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
