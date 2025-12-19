@@ -14,9 +14,9 @@ func main() {
 	urlHandler := handler.NewURLHandler(*urlService)
 	mux := http.NewServeMux()
 	mux.HandleFunc(`/`, urlHandler.ShortenURL)
-	mux.HandleFunc(`/`, urlHandler.GetOriginalURL)
+	mux.HandleFunc(`/{id}`, urlHandler.GetOriginalURL)
 
-	err := http.ListenAndServe(`:8080`, mux)
+	err := http.ListenAndServe(`localhost:8080`, mux)
 	if err != nil {
 		panic(err)
 	}
