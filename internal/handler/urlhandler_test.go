@@ -141,7 +141,7 @@ func TestGetOriginalURL(t *testing.T) {
 }
 
 type MockStorage struct {
-	mockId     string
+	mockID     string
 	urlStorage map[string]string
 }
 
