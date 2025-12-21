@@ -10,15 +10,15 @@ import (
 	"github.com/TMWF/url-shortener/internal/service"
 )
 
-type URLHandler struct {
+type urlHandler struct {
 	urlService service.URLService
 }
 
-func NewURLHandler(service service.URLService) *URLHandler {
-	return &URLHandler{urlService: service}
+func NewURLHandler(service service.URLService) *urlHandler {
+	return &urlHandler{urlService: service}
 }
 
-func (h *URLHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
+func (h *urlHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "Incorrect HTTP method, only POST methods allowed", http.StatusMethodNotAllowed)
 		return
@@ -44,7 +44,7 @@ func (h *URLHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprint(w, shortenedURL)
 }
 
-func (h *URLHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
+func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet {
 		http.Error(w, "Incorrect HTTP method, only GET methods allowed", http.StatusMethodNotAllowed)
 		return
