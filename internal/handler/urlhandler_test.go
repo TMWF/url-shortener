@@ -22,8 +22,8 @@ var getOrigianlURLHeaders = map[string]string{
 }
 
 func TestShortenURL(t *testing.T) {
-	var storage = MockStorage{mockId: "mockId", urlStorage: make(map[string]string, 1)}
-	storage.urlStorage[storage.mockId] = "http://practicum.yandex.ru"
+	var storage = MockStorage{mockID: "mockId", urlStorage: make(map[string]string, 1)}
+	storage.urlStorage[storage.mockID] = "http://practicum.yandex.ru"
 	type want struct {
 		code     int
 		response string
@@ -82,8 +82,8 @@ func TestShortenURL(t *testing.T) {
 }
 
 func TestGetOriginalURL(t *testing.T) {
-	var storage = MockStorage{mockId: "mockId", urlStorage: make(map[string]string, 1)}
-	storage.urlStorage[storage.mockId] = "http://practicum.yandex.ru"
+	var storage = MockStorage{mockID: "mockId", urlStorage: make(map[string]string, 1)}
+	storage.urlStorage[storage.mockID] = "http://practicum.yandex.ru"
 	type want struct {
 		code     int
 		response string
@@ -146,7 +146,7 @@ type MockStorage struct {
 }
 
 func (s *MockStorage) SaveURL(url string) (string, error) {
-	return s.mockId, nil
+	return s.mockID, nil
 }
 
 func (s *MockStorage) GetURL(id string) (string, bool) {
