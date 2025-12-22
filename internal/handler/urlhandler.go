@@ -5,9 +5,9 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/TMWF/url-shortener/internal/service"
+	"github.com/go-chi/chi/v5"
 )
 
 type urlHandler struct {
@@ -50,7 +50,7 @@ func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	shortID := strings.TrimPrefix(req.URL.Path, "/")
+	shortID := chi.URLParam(req, "id")
 	if shortID == "" {
 		http.Error(w, "Short URL ID is missing", http.StatusBadRequest)
 		return

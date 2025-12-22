@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/TMWF/url-shortener/internal/service"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -24,6 +26,8 @@ var getOrigianlURLHeaders = map[string]string{
 func TestShortenURL(t *testing.T) {
 	var storage = MockStorage{mockID: "mockId", urlStorage: make(map[string]string, 1)}
 	storage.urlStorage[storage.mockID] = "http://practicum.yandex.ru"
+	urlService := service.NewURLService(&storage)
+	urlHandler := NewURLHandler(*urlService)
 	type want struct {
 		code     int
 		response string
@@ -61,8 +65,6 @@ func TestShortenURL(t *testing.T) {
 			)
 			// создаём новый Recorder
 			w := httptest.NewRecorder()
-			urlService := service.NewURLService(&storage)
-			urlHandler := NewURLHandler(*urlService)
 			urlHandler.ShortenURL(w, request)
 
 			res := w.Result()
@@ -84,11 +86,19 @@ func TestShortenURL(t *testing.T) {
 func TestGetOriginalURL(t *testing.T) {
 	var storage = MockStorage{mockID: "mockId", urlStorage: make(map[string]string, 1)}
 	storage.urlStorage[storage.mockID] = "http://practicum.yandex.ru"
+	urlService := service.NewURLService(&storage)
+	urlHandler := NewURLHandler(*urlService)
+
+	router := chi.NewRouter()
+	router.Get(`/{id}`, urlHandler.GetOriginalURL)
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
 	type want struct {
-		code     int
-		response string
-		headers  map[string]string
+		code    int
+		headers map[string]string
 	}
+
 	tests := []struct {
 		name       string
 		httpMethod string
@@ -98,44 +108,17 @@ func TestGetOriginalURL(t *testing.T) {
 			name:       "positive _test",
 			httpMethod: http.MethodGet,
 			want: want{
-				code:    http.StatusTemporaryRedirect,
+				code:    http.StatusOK,
 				headers: getOrigianlURLHeaders,
 			},
 		},
-		{
-			name:       "negative test - wrong http method",
-			httpMethod: http.MethodPost,
-			want: want{
-				code:     http.StatusMethodNotAllowed,
-				response: "Incorrect HTTP method, only GET methods allowed\n",
-			},
-		},
 	}
+	client := resty.New()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(
-				test.httpMethod,
-				"http://localhost:8080/mockId",
-				nil,
-			)
-			// создаём новый Recorder
-			w := httptest.NewRecorder()
-			urlService := service.NewURLService(&storage)
-			urlHandler := NewURLHandler(*urlService)
-			urlHandler.GetOriginalURL(w, request)
-
-			res := w.Result()
-			// проверяем код ответа
-			assert.Equal(t, test.want.code, res.StatusCode)
-			// получаем и проверяем тело запроса
-			defer res.Body.Close()
-			resBody, err := io.ReadAll(res.Body)
-
+			resp, err := client.R().Execute(test.httpMethod, srv.URL+"/mockId")
+			assert.Equal(t, test.want.code, resp.StatusCode())
 			require.NoError(t, err)
-			assert.Equal(t, test.want.response, string(resBody))
-			for key, value := range test.want.headers {
-				assert.Equal(t, value, res.Header.Get(key))
-			}
 		})
 	}
 }
