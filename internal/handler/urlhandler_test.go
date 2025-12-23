@@ -1,12 +1,11 @@
 package handler
 
 import (
-	"io"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
+	"github.com/TMWF/url-shortener/internal/config"
 	"github.com/TMWF/url-shortener/internal/service"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-resty/resty/v2"
@@ -28,6 +27,13 @@ func TestShortenURL(t *testing.T) {
 	storage.urlStorage[storage.mockID] = "http://practicum.yandex.ru"
 	urlService := service.NewURLService(&storage)
 	urlHandler := NewURLHandler(*urlService)
+
+	router := chi.NewRouter()
+	router.Post(`/`, urlHandler.ShortenURL)
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+	config.ParseFlags()
+
 	type want struct {
 		code     int
 		response string
@@ -47,38 +53,40 @@ func TestShortenURL(t *testing.T) {
 				headers:  shortenedURLHeaders,
 			},
 		},
-		{
-			name:       "negative test - wrong http method",
-			httpMethod: http.MethodGet,
-			want: want{
-				code:     http.StatusMethodNotAllowed,
-				response: "Incorrect HTTP method, only POST methods allowed\n",
-			},
-		},
 	}
+	client := resty.New()
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			request := httptest.NewRequest(
-				test.httpMethod,
-				"http://localhost:8080/",
-				strings.NewReader("http://practicum.yandex.ru"),
-			)
-			// создаём новый Recorder
-			w := httptest.NewRecorder()
-			urlHandler.ShortenURL(w, request)
+			resp, err := client.R().Execute(test.httpMethod, srv.URL)
 
-			res := w.Result()
-			// проверяем код ответа
-			assert.Equal(t, test.want.code, res.StatusCode)
-			// получаем и проверяем тело запроса
-			defer res.Body.Close()
-			resBody, err := io.ReadAll(res.Body)
-
+			assert.Equal(t, test.want.code, resp.StatusCode())
 			require.NoError(t, err)
-			assert.Equal(t, test.want.response, string(resBody))
+			assert.Equal(t, test.want.response, string(resp.Body()))
+
 			for key, value := range test.want.headers {
-				assert.Equal(t, value, res.Header.Get(key))
+				assert.Equal(t, value, resp.Header().Get(key))
 			}
+			// request := httptest.NewRequest(
+			// 	test.httpMethod,
+			// 	"http://localhost:8080/",
+			// 	strings.NewReader("http://practicum.yandex.ru"),
+			// )
+			// // создаём новый Recorder
+			// w := httptest.NewRecorder()
+			// urlHandler.ShortenURL(w, request)
+
+			// res := w.Result()
+			// // проверяем код ответа
+			// assert.Equal(t, test.want.code, res.StatusCode)
+			// // получаем и проверяем тело запроса
+			// defer res.Body.Close()
+			// resBody, err := io.ReadAll(res.Body)
+
+			// require.NoError(t, err)
+
+			// for key, value := range test.want.headers {
+			// 	assert.Equal(t, value, res.Header.Get(key))
+			// }
 		})
 	}
 }

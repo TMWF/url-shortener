@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/TMWF/url-shortener/internal/config"
 	"github.com/TMWF/url-shortener/internal/handler"
 	"github.com/TMWF/url-shortener/internal/repository"
 	"github.com/TMWF/url-shortener/internal/service"
@@ -11,6 +12,7 @@ import (
 )
 
 func main() {
+	config.ParseFlags()
 	urlStorage := repository.NewMemStorage()
 	urlService := service.NewURLService(urlStorage)
 	urlHandler := handler.NewURLHandler(*urlService)
@@ -19,5 +21,5 @@ func main() {
 	router.Post(`/`, urlHandler.ShortenURL)
 	router.Get(`/{id}`, urlHandler.GetOriginalURL)
 
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Fatal(http.ListenAndServe(config.ServerHost, router))
 }
