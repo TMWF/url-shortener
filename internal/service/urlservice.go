@@ -15,7 +15,7 @@ func NewURLService(storage repository.Storage) *URLService {
 
 func (s *URLService) ShortenURL(url string) (string, error) {
 	id, err := s.storage.SaveURL(url)
-	return config.BaseURL + id, err
+	return config.BaseURL + "/" + id, err
 }
 
 func (s *URLService) GetOriginalURL(id string) (string, bool) {
