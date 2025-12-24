@@ -15,7 +15,7 @@ func main() {
 	config.ParseFlags()
 	urlStorage := repository.NewMemStorage()
 	urlService := service.NewURLService(urlStorage)
-	urlHandler := handler.NewURLHandler(*urlService)
+	urlHandler := handler.NewURLHandler(urlService)
 
 	router := chi.NewRouter()
 	router.Post(`/`, urlHandler.ShortenURL)
