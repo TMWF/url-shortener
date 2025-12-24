@@ -13,6 +13,12 @@ import (
 
 func main() {
 	config.ParseFlags()
+	router := createRouter()
+
+	log.Fatal(http.ListenAndServe(config.ServerHost, router))
+}
+
+func createRouter() http.Handler {
 	urlStorage := repository.NewMemStorage()
 	urlService := service.NewURLService(urlStorage)
 	urlHandler := handler.NewURLHandler(urlService)
@@ -20,6 +26,5 @@ func main() {
 	router := chi.NewRouter()
 	router.Post(`/`, urlHandler.ShortenURL)
 	router.Get(`/{id}`, urlHandler.GetOriginalURL)
-
-	log.Fatal(http.ListenAndServe(config.ServerHost, router))
+	return router
 }

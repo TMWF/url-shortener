@@ -66,27 +66,6 @@ func TestShortenURL(t *testing.T) {
 			for key, value := range test.want.headers {
 				assert.Equal(t, value, resp.Header().Get(key))
 			}
-			// request := httptest.NewRequest(
-			// 	test.httpMethod,
-			// 	"http://localhost:8080/",
-			// 	strings.NewReader("http://practicum.yandex.ru"),
-			// )
-			// // создаём новый Recorder
-			// w := httptest.NewRecorder()
-			// urlHandler.ShortenURL(w, request)
-
-			// res := w.Result()
-			// // проверяем код ответа
-			// assert.Equal(t, test.want.code, res.StatusCode)
-			// // получаем и проверяем тело запроса
-			// defer res.Body.Close()
-			// resBody, err := io.ReadAll(res.Body)
-
-			// require.NoError(t, err)
-
-			// for key, value := range test.want.headers {
-			// 	assert.Equal(t, value, res.Header.Get(key))
-			// }
 		})
 	}
 }
