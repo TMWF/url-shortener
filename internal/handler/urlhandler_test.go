@@ -26,7 +26,7 @@ func TestShortenURL(t *testing.T) {
 	var storage = MockStorage{mockID: "mockId", urlStorage: make(map[string]string, 1)}
 	storage.urlStorage[storage.mockID] = "http://practicum.yandex.ru"
 	urlService := service.NewURLService(&storage)
-	urlHandler := NewURLHandler(*urlService)
+	urlHandler := NewURLHandler(urlService)
 
 	router := chi.NewRouter()
 	router.Post(`/`, urlHandler.ShortenURL)
@@ -95,7 +95,7 @@ func TestGetOriginalURL(t *testing.T) {
 	var storage = MockStorage{mockID: "mockId", urlStorage: make(map[string]string, 1)}
 	storage.urlStorage[storage.mockID] = "http://practicum.yandex.ru"
 	urlService := service.NewURLService(&storage)
-	urlHandler := NewURLHandler(*urlService)
+	urlHandler := NewURLHandler(urlService)
 
 	router := chi.NewRouter()
 	router.Get(`/{id}`, urlHandler.GetOriginalURL)
