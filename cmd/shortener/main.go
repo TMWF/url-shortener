@@ -12,15 +12,16 @@ import (
 )
 
 func main() {
-	config.ParseFlags()
-	router := createRouter()
+	cfg := config.Config{}
+	cfg.ParseFlags()
+	router := createRouter(cfg)
 
-	log.Fatal(http.ListenAndServe(config.ServerHost, router))
+	log.Fatal(http.ListenAndServe(cfg.ServerHost, router))
 }
 
-func createRouter() http.Handler {
+func createRouter(config config.Config) http.Handler {
 	urlStorage := repository.NewMemStorage()
-	urlService := service.NewURLService(urlStorage)
+	urlService := service.NewURLService(urlStorage, &config)
 	urlHandler := handler.NewURLHandler(urlService)
 
 	router := chi.NewRouter()

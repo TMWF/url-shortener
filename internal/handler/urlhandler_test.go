@@ -23,16 +23,17 @@ var getOrigianlURLHeaders = map[string]string{
 }
 
 func TestShortenURL(t *testing.T) {
+	cfg := config.Config{}
+	cfg.BaseURL = "http://localhost:8080"
 	var storage = MockStorage{mockID: "mockId", urlStorage: make(map[string]string, 1)}
 	storage.urlStorage[storage.mockID] = "http://practicum.yandex.ru"
-	urlService := service.NewURLService(&storage)
+	urlService := service.NewURLService(&storage, &cfg)
 	urlHandler := NewURLHandler(urlService)
 
 	router := chi.NewRouter()
 	router.Post(`/`, urlHandler.ShortenURL)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
-	config.ParseFlags()
 
 	type want struct {
 		code     int
@@ -71,9 +72,11 @@ func TestShortenURL(t *testing.T) {
 }
 
 func TestGetOriginalURL(t *testing.T) {
+	cfg := config.Config{}
+	cfg.ParseFlags()
 	var storage = MockStorage{mockID: "mockId", urlStorage: make(map[string]string, 1)}
 	storage.urlStorage[storage.mockID] = "http://practicum.yandex.ru"
-	urlService := service.NewURLService(&storage)
+	urlService := service.NewURLService(&storage, &cfg)
 	urlHandler := NewURLHandler(urlService)
 
 	router := chi.NewRouter()

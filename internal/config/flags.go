@@ -2,11 +2,13 @@ package config
 
 import "flag"
 
-var ServerHost string
-var BaseURL string
+type Config struct {
+	ServerHost string
+	BaseURL    string
+}
 
-func ParseFlags() {
-	flag.StringVar(&ServerHost, "a", "localhost:8080", "address and port to run server")
-	flag.StringVar(&BaseURL, "b", "http://localhost:8080", "address and port to run server")
+func (cfg *Config) ParseFlags() {
+	flag.StringVar(&cfg.ServerHost, "a", "localhost:8080", "address and port to run server")
+	flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "address and port to run server")
 	flag.Parse()
 }
