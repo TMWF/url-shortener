@@ -13,18 +13,24 @@ type Config struct {
 }
 
 func (cfg *Config) ParseFlags() {
+	var serverHostFlag string
+	var baseURLFlag string
+
+	flag.StringVar(&serverHostFlag, "a", "localhost:8080", "address and port to run server")
+	flag.StringVar(&baseURLFlag, "b", "http://localhost:8080", "address and port to run server")
+
+	flag.Parse()
+
 	err := env.Parse(cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	if cfg.ServerHost == "" {
-		flag.StringVar(&cfg.ServerHost, "a", "localhost:8080", "address and port to run server")
+		cfg.ServerHost = serverHostFlag
 	}
 
 	if cfg.BaseURL == "" {
-		flag.StringVar(&cfg.BaseURL, "b", "http://localhost:8080", "address and port to run server")
+		cfg.BaseURL = baseURLFlag
 	}
-
-	flag.Parse()
 }
