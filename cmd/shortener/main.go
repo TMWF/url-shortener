@@ -37,6 +37,7 @@ func createRouter(config config.Config) http.Handler {
 	router := chi.NewRouter()
 	router.Use(middleware.RequestLoggerMiddleware(logger.GetLogger()))
 	router.Post(`/`, urlHandler.ShortenURL)
+	router.Post(`/api/shorten`, urlHandler.ShortenURLAPI)
 	router.Get(`/{id}`, urlHandler.GetOriginalURL)
 	return router
 }
