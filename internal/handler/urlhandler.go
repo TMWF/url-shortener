@@ -68,10 +68,16 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	encoder := json.NewEncoder(w)
+	if err = encoder.Encode(response); err != nil {
+		logger.GetLogger().Error("Error occured while encodeing http-response")
+		http.Error(w, "Error occured while encodeing http-response", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Length", strconv.Itoa(len(response.ShortenedURL)))
 	w.WriteHeader(http.StatusCreated)
-	fmt.Fprint(w, response)
 }
 
 func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {

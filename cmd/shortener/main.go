@@ -24,7 +24,7 @@ func main() {
 	defer logger.GetLogger().Sync()
 
 	router := createRouter(cfg)
-	logger.GetLogger().Info("Starting server")
+	logger.GetLogger().Info("Starting server on port " + cfg.ServerHost)
 
 	log.Fatal(http.ListenAndServe(cfg.ServerHost, router))
 }

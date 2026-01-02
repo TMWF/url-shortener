@@ -28,6 +28,7 @@ func (w *responseWriterWrapper) Write(b []byte) (int, error) {
 func RequestLoggerMiddleware(logger *zap.Logger) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			logger.Info("Middleware is starting to work")
 			start := time.Now()
 
 			wrapper := &responseWriterWrapper{
