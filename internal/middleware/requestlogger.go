@@ -32,7 +32,6 @@ func RequestLoggerMiddleware(logger *zap.Logger) func(next http.Handler) http.Ha
 
 			wrapper := &responseWriterWrapper{
 				ResponseWriter: w,
-				statusCode:     http.StatusOK,
 			}
 
 			// Передаем запрос следующему обработчику
