@@ -23,5 +23,8 @@ func Initialize(level string) (err error) {
 }
 
 func GetLogger() *zap.Logger {
+	if logger == nil {
+		Initialize("INFO")
+	}
 	return logger
 }

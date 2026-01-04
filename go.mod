@@ -5,6 +5,7 @@ go 1.23.2
 require github.com/stretchr/testify v1.11.1
 
 require (
+	github.com/stretchr/objx v0.5.2 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/net v0.43.0 // indirect
 )
