@@ -37,7 +37,7 @@ func (h *urlHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 
 	shortenedURL, err := h.urlService.ShortenURL(bodyString)
 	if err != nil {
-		http.Error(w, "Error occured while etting shortened url", http.StatusInternalServerError)
+		http.Error(w, "Error occured while getting shortened url", http.StatusInternalServerError)
 		return
 	}
 
