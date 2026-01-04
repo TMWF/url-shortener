@@ -7,7 +7,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// responseWriterWrapper оборачивает http.ResponseWriter для захвата статуса и размера ответа.
 type responseWriterWrapper struct {
 	http.ResponseWriter
 	statusCode   int
