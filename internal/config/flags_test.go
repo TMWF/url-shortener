@@ -13,18 +13,15 @@ func resetFlags() {
 }
 
 func TestParseFlags(t *testing.T) {
-	// Сохраняем оригинальные os.Args и переменные окружения для восстановления после тестов
 	originalArgs := os.Args
 	originalEnvServerHost := os.Getenv("SERVER_ADDRESS")
 	originalEnvBaseURL := os.Getenv("BASE_URL")
 
-	// Регистрируем функцию очистки, которая будет вызвана после каждого теста.
-	// Это критически важно для изоляции тестов.
 	t.Cleanup(func() {
-		os.Args = originalArgs                             // Восстанавливаем оригинальные аргументы командной строки
-		os.Setenv("SERVER_ADDRESS", originalEnvServerHost) // Восстанавливаем переменную окружения
-		os.Setenv("BASE_URL", originalEnvBaseURL)          // Восстанавливаем переменную окружения
-		resetFlags()                                       // Сбрасываем состояние пакета flag
+		os.Args = originalArgs
+		os.Setenv("SERVER_ADDRESS", originalEnvServerHost)
+		os.Setenv("BASE_URL", originalEnvBaseURL)
+		resetFlags()
 	})
 
 	testCases := []struct {

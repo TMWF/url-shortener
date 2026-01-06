@@ -15,11 +15,11 @@ func NewMemStorage() *memStorage {
 	return &memStorage{urlStorage: make(map[string]string)}
 }
 
-func (ms *memStorage) SaveURL(url string) (string, error) {
-	ms.lock.Lock()
-	defer ms.lock.Unlock()
+func (fs *memStorage) SaveURL(url string) (string, error) {
+	fs.lock.Lock()
+	defer fs.lock.Unlock()
 	id := util.RandomString(8, util.LatinCharSet)
-	ms.urlStorage[id] = url
+	fs.urlStorage[id] = url
 	return id, nil
 }
 

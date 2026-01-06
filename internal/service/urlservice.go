@@ -14,11 +14,11 @@ type URLService interface {
 
 type defaultURLService struct {
 	storage repository.Storage
-	config  config.Config
+	config  *config.Config
 }
 
 func NewURLService(storage repository.Storage, config *config.Config) *defaultURLService {
-	return &defaultURLService{storage: storage, config: *config}
+	return &defaultURLService{storage: storage, config: config}
 }
 
 func (s *defaultURLService) ShortenURL(url string) (string, error) {

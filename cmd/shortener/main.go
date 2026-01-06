@@ -30,7 +30,7 @@ func main() {
 }
 
 func createRouter(config config.Config) http.Handler {
-	urlStorage := repository.NewMemStorage()
+	urlStorage := repository.NewFileStorage(&config)
 	urlService := service.NewURLService(urlStorage, &config)
 	urlHandler := handler.NewURLHandler(urlService)
 

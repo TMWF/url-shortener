@@ -1,0 +1,78 @@
+package repository
+
+import (
+	"encoding/json"
+	"os"
+	"sync"
+
+	"github.com/TMWF/url-shortener/internal/config"
+	"github.com/TMWF/url-shortener/internal/logger"
+	"github.com/TMWF/url-shortener/internal/model"
+	"github.com/TMWF/url-shortener/internal/util"
+	"go.uber.org/zap"
+)
+
+type fileStorage struct {
+	urlStorage map[string]model.URLModel
+	lock       sync.RWMutex
+	cfg        *config.Config
+}
+
+func NewFileStorage(config *config.Config) *fileStorage {
+	fileStorage := fileStorage{cfg: config}
+	urlStorage := make(map[string]model.URLModel)
+	file, err := os.OpenFile(fileStorage.cfg.URLStoragePath, os.O_RDONLY|os.O_CREATE, 0666)
+	if err != nil {
+		logger.GetLogger().Error("Error occured while opening file ",
+			zap.String("originalErrorMessage", err.Error()),
+		)
+		fileStorage.urlStorage = urlStorage
+		return &fileStorage
+	}
+
+	if err := json.NewDecoder(file).Decode(&urlStorage); err != nil {
+		logger.GetLogger().Error("Error occured while decoding urls from file ",
+			zap.String("originalErrorMessage", err.Error()),
+		)
+
+		fileStorage.urlStorage = urlStorage
+		return &fileStorage
+	}
+
+	fileStorage.urlStorage = urlStorage
+	return &fileStorage
+}
+
+func (fs *fileStorage) GetURL(id string) (string, bool) {
+	fs.lock.RLock()
+	defer fs.lock.RUnlock()
+	urlModel, found := fs.urlStorage[id]
+	return urlModel.OriginalURL, found
+}
+
+func (fs *fileStorage) SaveURL(url string) (string, error) {
+	fs.lock.Lock()
+	defer fs.lock.Unlock()
+	id := util.RandomString(8, util.LatinCharSet)
+	urlModel := model.URLModel{ShortURL: id, OriginalURL: url}
+	file, err := os.OpenFile(fs.cfg.URLStoragePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		logger.GetLogger().Error("Error occured while opening file ",
+			zap.String("originalErrorMessage", err.Error()),
+		)
+		return "", err
+	}
+	defer file.Close()
+	fs.urlStorage[id] = urlModel
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+
+	if err := encoder.Encode(fs.urlStorage); err != nil {
+		logger.GetLogger().Error("Error occured while encoding JSON ",
+			zap.String("originalErrorMessage", err.Error()),
+		)
+		return "", err
+	}
+	return id, nil
+}
