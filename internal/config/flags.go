@@ -11,7 +11,7 @@ type Config struct {
 	ServerHost     string `env:"SERVER_ADDRESS"`
 	BaseURL        string `env:"BASE_URL"`
 	LogLevel       string `env:"LOG_LEVEL"`
-	URLStoragePath string `env:FILE_STORAGE_PATH`
+	URLStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
 func (cfg *Config) ParseFlags() {
