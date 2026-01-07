@@ -2,21 +2,22 @@ package handler
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/TMWF/url-shortener/internal/middleware"
 	"github.com/TMWF/url-shortener/internal/model"
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
-
-// --- Mock для сервиса ---
 
 type MockURLService struct {
 	mock.Mock
@@ -37,7 +38,78 @@ func (m *MockURLService) GetOriginalURL(id string) (string, bool) {
 	return args.String(0), args.Bool(1)
 }
 
+func gzipData(t *testing.T, data []byte) []byte {
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	_, err := zw.Write(data)
+	assert.NoError(t, err)
+	err = zw.Close()
+	assert.NoError(t, err)
+	return buf.Bytes()
+}
+
+func gunzipData(t *testing.T, data []byte) []byte {
+	zr, err := gzip.NewReader(bytes.NewReader(data))
+	assert.NoError(t, err)
+	res, err := io.ReadAll(zr)
+	assert.NoError(t, err)
+	return res
+}
+
 // --- Тесты ---
+
+func TestGzipMiddlewareIntegration(t *testing.T) {
+	mockSvc := new(MockURLService)
+	h := NewURLHandler(mockSvc)
+
+	// Оборачиваем хендлер в мидлвар
+	gzipHandler := middleware.GzipMiddleware()(http.HandlerFunc(h.ShortenURLAPI))
+
+	t.Run("should_compress_response", func(t *testing.T) {
+		input := model.ShortenURLRequest{URL: "https://google.com"}
+		output := model.ShortenURLResponse{ShortenedURL: "http://localhost:8080/abc"}
+
+		mockSvc.On("ShortenURLAPI", input).Return(output, nil).Once()
+
+		body, _ := json.Marshal(input)
+		req := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewReader(body))
+		req.Header.Set("Accept-Encoding", "gzip")
+		req.Header.Set("Content-Type", "application/json")
+
+		w := httptest.NewRecorder()
+		gzipHandler.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		assert.Equal(t, "gzip", w.Header().Get("Content-Encoding"))
+		assert.Empty(t, w.Header().Get("Content-Length"), "Content-Length should be deleted when gzipping")
+
+		// Проверяем, что тело действительно сжато и распаковывается в корректный JSON
+		unzippedBody := gunzipData(t, w.Body.Bytes())
+		var actualResp model.ShortenURLResponse
+		json.Unmarshal(unzippedBody, &actualResp)
+		assert.Equal(t, output.ShortenedURL, actualResp.ShortenedURL)
+	})
+
+	t.Run("should_decompress_request", func(t *testing.T) {
+		input := model.ShortenURLRequest{URL: "https://yandex.ru"}
+		output := model.ShortenURLResponse{ShortenedURL: "http://localhost:8080/def"}
+
+		mockSvc.On("ShortenURLAPI", input).Return(output, nil).Once()
+
+		jsonBytes, _ := json.Marshal(input)
+		compressedBody := gzipData(t, jsonBytes)
+
+		req := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewReader(compressedBody))
+		req.Header.Set("Content-Encoding", "gzip")
+		req.Header.Set("Content-Type", "application/json")
+
+		w := httptest.NewRecorder()
+		gzipHandler.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusCreated, w.Code)
+		mockSvc.AssertExpectations(t)
+	})
+}
 
 func TestShortenURL(t *testing.T) {
 	tests := []struct {
