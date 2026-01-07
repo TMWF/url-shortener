@@ -111,10 +111,8 @@ func TestParseFlags(t *testing.T) {
 				os.Unsetenv("BASE_URL")
 			}
 
-			// Устанавливаем аргументы командной строки для текущего тест-кейса
 			os.Args = tc.cliArgs
 
-			// Создаем новый экземпляр Config для каждого теста
 			cfg := &Config{}
 			cfg.ParseFlags()
 
@@ -128,106 +126,3 @@ func TestParseFlags(t *testing.T) {
 		})
 	}
 }
-
-// // TestParseFlags_EnvParseError имитирует ситуацию, когда env.Parse() вызывает log.Fatal.
-// // Для этого нужно перехватить вызов os.Exit(1), который делает log.Fatal.
-// // Это более сложный тест, т.к. требует временного переопределения os.Exit.
-// func TestParseFlags_EnvParseError(t *testing.T) {
-// 	// Сохраняем оригинальные os.Args и os.Exit
-// 	originalArgs := os.Args
-// 	originalExit := os.Exit
-// 	originalEnv := os.Environ()
-
-// 	// Используем буфер для захвата вывода log.Fatal
-// 	var logOutput bytes.Buffer
-// 	// Сохраняем оригинальный вывод log и перенаправляем его
-// 	originalLogOutput := flag.CommandLine.Output()
-// 	flag.CommandLine.SetOutput(&logOutput)
-
-// 	// Регистрируем функцию очистки
-// 	t.Cleanup(func() {
-// 		os.Args = originalArgs
-// 		os.Exit = originalExit
-// 		// Восстанавливаем оригинальные переменные окружения
-// 		for _, e := range originalEnv {
-// 			parts := strings.SplitN(e, "=", 2)
-// 			os.Setenv(parts[0], parts[1])
-// 		}
-// 		resetFlags()                                  // Сбрасываем flag.CommandLine
-// 		flag.CommandLine.SetOutput(originalLogOutput) // Восстанавливаем вывод log
-// 	})
-
-// 	// Устанавливаем переменную окружения, которая вызовет ошибку (если бы был int тип)
-// 	// В данном случае, с двумя строковыми полями ServerHost и BaseURL,
-// 	// сложно вызвать ошибку env.Parse. Если бы Config содержал:
-// 	// Port int `env:"PORT"`
-// 	// Тогда os.Setenv("PORT", "not_a_number") вызвало бы ошибку.
-// 	// Для текущей структуры Config, env.Parse() для строк не вызовет Fatal,
-// 	// но мы все равно покажем, как это тестировать, если бы такая ошибка была.
-// 	// Например, мы можем создать фиктивную ошибку для env.Parse (для этого
-// 	// потребовалось бы изменить функцию ParseFlags, чтобы она могла принимать
-// 	// mock env.Parser, что является хорошей практикой для тестируемости).
-// 	// В данном случае мы просто покажем, что log.Fatal будет вызван, если err != nil.
-
-// 	// Для демонстрации, предположим, что env.Parse каким-то образом возвращает ошибку.
-// 	// В реальном коде с `caarlos0/env` и двумя строками, это сложно,
-// 	// но если бы был `Port int env:"PORT"`, то `os.Setenv("PORT", "abc")`
-// 	// вызвало бы ошибку парсинга.
-
-// 	// Создаем "фиктивную" ошибку, переопределяя поведение os.Exit
-// 	exitCalled := false
-// 	os.Exit = func(code int) {
-// 		exitCalled = true
-// 		if code != 1 {
-// 			t.Errorf("Ожидался os.Exit(1), получено os.Exit(%d)", code)
-// 		}
-// 		panic("os.Exit called") // Паникуем, чтобы прервать выполнение теста
-// 	}
-
-// 	cfg := &config.Config{}
-// 	// Имитируем условие, при котором env.Parse вернет ошибку (например, если бы был `int` поле)
-// 	// В данном случае, это просто заглушка для демонстрации, так как с текущими полями Config
-// 	// env.Parse не выдаст ошибку для строк.
-// 	//
-// 	// Если бы Config был:
-// 	// type Config struct {
-// 	//  ServerHost string `env:"SERVER_ADDRESS"`
-// 	//  BaseURL    string `env:"BASE_URL"`
-// 	//  Port       int    `env:"PORT"` // Новое поле
-// 	// }
-// 	// Тогда мы могли бы сделать:
-// 	// os.Setenv("PORT", "not_a_number")
-
-// 	// Поскольку у нас нет такого поля, этот тест просто покажет структуру.
-// 	// Если бы в ParseFlags была какая-то другая логика, которая могла бы привести к log.Fatal
-// 	// до env.Parse, то это было бы актуальнее.
-// 	// Для чистоты данного теста, мы не можем легко заставить env.Parse вернуть ошибку
-// 	// с текущей структурой `Config`. Тест-кейс для `log.Fatal` будет более уместен,
-// 	// если `ParseFlags` будет иметь более сложную логику, которая может падать.
-
-// 	// Тест будет "паниковать", если `log.Fatal` будет вызван.
-// 	// Мы можем обернуть вызов в `recover`.
-// 	defer func() {
-// 		if r := recover(); r == nil {
-// 			// t.Error("Ожидалось паника (вызов log.Fatal / os.Exit), но ее не было.")
-// 			// Если env.Parse не вызывает Fatal для текущей Config, то это нормально.
-// 		} else if !exitCalled {
-// 			t.Errorf("Паника произошла, но os.Exit не был вызван. Ошибка: %v", r)
-// 		}
-// 	}()
-
-// 	cfg.ParseFlags() // Вызываем функцию, которая может вызвать log.Fatal
-
-// 	// Проверяем, что os.Exit был вызван
-// 	if !exitCalled {
-// 		// Это произойдет, если env.Parse не смог вызвать Fatal.
-// 		// Для `string` полей `caarlos0/env` всегда успешен.
-// 		// Чтобы этот тест был полезным, нужно изменить `Config` и спровоцировать ошибку.
-// 		t.Skip("Пропуск: env.Parse не вызывает Fatal для строковых полей в этой конфигурации.")
-// 	}
-
-// 	// Проверяем, что log.Fatal вывел сообщение
-// 	if !strings.Contains(logOutput.String(), "Error parsing environment variables:") {
-// 		// Ожидалось бы сообщение об ошибке парсинга env
-// 	}
-// }

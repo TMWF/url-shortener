@@ -33,13 +33,10 @@ func RequestLoggerMiddleware(logger *zap.Logger) func(next http.Handler) http.Ha
 				ResponseWriter: w,
 			}
 
-			// Передаем запрос следующему обработчику
 			next.ServeHTTP(wrapper, r)
 
-			// Вычисляем время выполнения
 			duration := time.Since(start)
 
-			// Логируем сведения о запросе и ответе
 			logger.Info("request completed",
 				zap.String("uri", r.RequestURI),
 				zap.String("method", r.Method),

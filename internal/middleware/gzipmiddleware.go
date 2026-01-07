@@ -82,7 +82,6 @@ func GzipMiddleware() func(next http.Handler) http.Handler {
 			// который будем передавать следующей функции
 			ow := w
 
-			// проверяем, что клиент умеет получать от сервера сжатые данные в формате gzip
 			acceptEncodingValues := r.Header.Values("Accept-Encoding")
 			supportsGzip := util.HasSubstring(acceptEncodingValues, "gzip")
 
