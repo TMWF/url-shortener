@@ -2,13 +2,15 @@ package service
 
 import (
 	"github.com/TMWF/url-shortener/internal/config"
+	"github.com/TMWF/url-shortener/internal/logger"
 	"github.com/TMWF/url-shortener/internal/model"
 	"github.com/TMWF/url-shortener/internal/repository"
+	"go.uber.org/zap"
 )
 
 type URLService interface {
 	ShortenURL(url string) (string, error)
-	ShortenURLAPI(request *model.ShortenURLRequest) (model.ShortenURLResponse, error)
+	ShortenURLAPI(request *model.ShortenURLRequest) (*model.ShortenURLResponse, error)
 	GetOriginalURL(id string) (string, bool)
 }
 
@@ -26,9 +28,15 @@ func (s *defaultURLService) ShortenURL(url string) (string, error) {
 	return s.config.BaseURL + "/" + id, err
 }
 
-func (s *defaultURLService) ShortenURLAPI(request *model.ShortenURLRequest) (model.ShortenURLResponse, error) {
+func (s *defaultURLService) ShortenURLAPI(request *model.ShortenURLRequest) (*model.ShortenURLResponse, error) {
 	id, err := s.storage.SaveURL(request.URL)
-	return model.ShortenURLResponse{ShortenedURL: s.config.BaseURL + "/" + id}, err
+	if err != nil {
+		logger.GetLogger().Error("Error occured while getting shortened URL ",
+			zap.String("original error message", err.Error()),
+		)
+		return &model.ShortenURLResponse{}, err
+	}
+	return &model.ShortenURLResponse{ShortenedURL: s.config.BaseURL + "/" + id}, err
 }
 
 func (s *defaultURLService) GetOriginalURL(id string) (string, bool) {

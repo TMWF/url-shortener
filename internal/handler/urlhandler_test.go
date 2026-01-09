@@ -28,9 +28,9 @@ func (m *MockURLService) ShortenURL(url string) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
-func (m *MockURLService) ShortenURLAPI(req *model.ShortenURLRequest) (model.ShortenURLResponse, error) {
+func (m *MockURLService) ShortenURLAPI(req *model.ShortenURLRequest) (*model.ShortenURLResponse, error) {
 	args := m.Called(req)
-	return args.Get(0).(model.ShortenURLResponse), args.Error(1)
+	return args.Get(0).(*model.ShortenURLResponse), args.Error(1)
 }
 
 func (m *MockURLService) GetOriginalURL(id string) (string, bool) {
@@ -67,7 +67,7 @@ func TestGzipMiddlewareIntegration(t *testing.T) {
 
 	t.Run("should_compress_response", func(t *testing.T) {
 		input := model.ShortenURLRequest{URL: "https://google.com"}
-		output := model.ShortenURLResponse{ShortenedURL: "http://localhost:8080/abc"}
+		output := &model.ShortenURLResponse{ShortenedURL: "http://localhost:8080/abc"}
 
 		mockSvc.On("ShortenURLAPI", &input).Return(output, nil).Once()
 
