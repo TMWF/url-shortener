@@ -1,11 +1,14 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 
+	"github.com/TMWF/url-shortener/internal/logger"
+	"github.com/TMWF/url-shortener/internal/model"
 	"github.com/TMWF/url-shortener/internal/service"
 	"github.com/go-chi/chi/v5"
 )
@@ -34,7 +37,7 @@ func (h *urlHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 
 	shortenedURL, err := h.urlService.ShortenURL(bodyString)
 	if err != nil {
-		http.Error(w, "Error occured while etting shortened url", http.StatusInternalServerError)
+		http.Error(w, "Error occured while getting shortened url", http.StatusInternalServerError)
 		return
 	}
 
@@ -42,6 +45,39 @@ func (h *urlHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Length", strconv.Itoa(len(shortenedURL)))
 	w.WriteHeader(http.StatusCreated)
 	fmt.Fprint(w, shortenedURL)
+}
+
+func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "Incorrect HTTP method, only POST methods allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var reqBody model.ShortenURLRequest
+	dec := json.NewDecoder(req.Body)
+	if err := dec.Decode(&reqBody); err != nil {
+		logger.GetLogger().Error("Error occured while decoding request body")
+		http.Error(w, "Error occured while decoding request body", http.StatusBadRequest)
+		return
+	}
+
+	response, err := h.urlService.ShortenURLAPI(&reqBody)
+	if err != nil {
+		logger.GetLogger().Error("Error occured while getting shortened url")
+		http.Error(w, "Error occured while getting shortened url", http.StatusInternalServerError)
+		return
+	}
+
+	responseBody, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
+	w.WriteHeader(http.StatusCreated)
+	w.Write(responseBody)
 }
 
 func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
