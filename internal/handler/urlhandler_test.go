@@ -94,7 +94,7 @@ func TestGzipMiddlewareIntegration(t *testing.T) {
 		input := model.ShortenURLRequest{URL: "https://yandex.ru"}
 		output := model.ShortenURLResponse{ShortenedURL: "http://localhost:8080/def"}
 
-		mockSvc.On("ShortenURLAPI", input).Return(output, nil).Once()
+		mockSvc.On("ShortenURLAPI", &input).Return(output, nil).Once()
 
 		jsonBytes, _ := json.Marshal(input)
 		compressedBody := gzipData(t, jsonBytes)
@@ -176,7 +176,7 @@ func TestShortenURLAPI(t *testing.T) {
 		input := model.ShortenURLRequest{URL: "https://yandex.ru"}
 		output := model.ShortenURLResponse{ShortenedURL: "http://localhost:8080/abc"}
 
-		mockSvc.On("ShortenURLAPI", input).Return(output, nil)
+		mockSvc.On("ShortenURLAPI", &input).Return(output, nil)
 
 		jsonBody, _ := json.Marshal(input)
 		req := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewReader(jsonBody))
