@@ -8,7 +8,7 @@ import (
 
 type URLService interface {
 	ShortenURL(url string) (string, error)
-	ShortenURLAPI(request model.ShortenURLRequest) (model.ShortenURLResponse, error)
+	ShortenURLAPI(request *model.ShortenURLRequest) (model.ShortenURLResponse, error)
 	GetOriginalURL(id string) (string, bool)
 }
 
@@ -26,7 +26,7 @@ func (s *defaultURLService) ShortenURL(url string) (string, error) {
 	return s.config.BaseURL + "/" + id, err
 }
 
-func (s *defaultURLService) ShortenURLAPI(request model.ShortenURLRequest) (model.ShortenURLResponse, error) {
+func (s *defaultURLService) ShortenURLAPI(request *model.ShortenURLRequest) (model.ShortenURLResponse, error) {
 	id, err := s.storage.SaveURL(request.URL)
 	return model.ShortenURLResponse{ShortenedURL: s.config.BaseURL + "/" + id}, err
 }
