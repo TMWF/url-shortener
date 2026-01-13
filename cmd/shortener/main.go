@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/TMWF/url-shortener/internal/config"
-	"github.com/TMWF/url-shortener/internal/config/db"
 	"github.com/TMWF/url-shortener/internal/database"
 	"github.com/TMWF/url-shortener/internal/handler"
 	"github.com/TMWF/url-shortener/internal/logger"
@@ -17,11 +16,8 @@ import (
 )
 
 func main() {
-	cfg := config.Config{}
-	cfg.ParseFlags()
+	cfg, dbConfig := config.InitialiseConfigs()
 
-	dbConfig := db.PostgreSQLConfig{}
-	dbConfig.ParseFlags()
 	db, err := database.NewDB(dbConfig.DatabaseDSN)
 	if err != nil {
 		logger.GetLogger().Fatal("Error occured when creating DB connection")
@@ -39,14 +35,14 @@ func main() {
 	log.Fatal(http.ListenAndServe(cfg.ServerHost, router))
 }
 
-func createRouter(config config.Config, db *sql.DB) http.Handler {
+func createRouter(config *config.Config, db *sql.DB) http.Handler {
 
 	dbStorage := repository.NewDBStorage(db)
 	pingService := service.NewPingDBService(dbStorage)
 	pingHandler := handler.NewPingHandler(pingService)
 
-	urlStorage := repository.NewFileStorage(&config)
-	urlService := service.NewURLService(urlStorage, &config)
+	urlStorage := repository.NewFileStorage(config)
+	urlService := service.NewURLService(urlStorage, config)
 	urlHandler := handler.NewURLHandler(urlService)
 
 	router := chi.NewRouter()

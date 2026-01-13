@@ -2,9 +2,11 @@ package config
 
 import (
 	"flag"
-	"log"
 
+	"github.com/TMWF/url-shortener/internal/config/db"
+	"github.com/TMWF/url-shortener/internal/logger"
 	"github.com/caarlos0/env/v6"
+	"go.uber.org/zap"
 )
 
 type Config struct {
@@ -14,21 +16,33 @@ type Config struct {
 	URLStoragePath string `env:"FILE_STORAGE_PATH"`
 }
 
-func (cfg *Config) ParseFlags() {
+func InitialiseConfigs() (*Config, *db.PostgreSQLConfig) {
+	cfg := &Config{}
+	dbCfg := &db.PostgreSQLConfig{}
 	var serverHostFlag string
 	var baseURLFlag string
 	var logLevel string
 	var urlStoragePath string
+	var databaseDSN string
 
 	flag.StringVar(&serverHostFlag, "a", "localhost:8080", "address and port to run server")
 	flag.StringVar(&baseURLFlag, "b", "http://localhost:8080", "address and port to run server")
 	flag.StringVar(&logLevel, "c", "INFO", "logging level")
 	flag.StringVar(&urlStoragePath, "f", "urls.json", "File storage path for urls")
+	flag.StringVar(&databaseDSN, "d", "postgres://user:pass@localhost:5432/db", "PostgreSQL DSN")
 	flag.Parse()
 
 	err := env.Parse(cfg)
 	if err != nil {
-		log.Fatal(err)
+		logger.GetLogger().Fatal("Error occured while trying to parse configs.",
+			zap.String("Original eror message", err.Error()),
+		)
+	}
+
+	if err = env.Parse(dbCfg); err != nil {
+		logger.GetLogger().Fatal("Error occured while trying to parse db configs.",
+			zap.String("Original eror message", err.Error()),
+		)
 	}
 
 	if cfg.ServerHost == "" {
@@ -46,4 +60,10 @@ func (cfg *Config) ParseFlags() {
 	if cfg.URLStoragePath == "" {
 		cfg.URLStoragePath = urlStoragePath
 	}
+
+	if dbCfg.DatabaseDSN == "" {
+		dbCfg.DatabaseDSN = databaseDSN
+	}
+
+	return cfg, dbCfg
 }
