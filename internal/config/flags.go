@@ -28,8 +28,8 @@ func InitialiseConfigs() *Config {
 	flag.StringVar(&serverHostFlag, "a", "localhost:8080", "address and port to run server")
 	flag.StringVar(&baseURLFlag, "b", "http://localhost:8080", "address and port to run server")
 	flag.StringVar(&logLevel, "c", "INFO", "logging level")
-	flag.StringVar(&urlStoragePath, "f", "urls.json", "File storage path for urls")
-	flag.StringVar(&databaseDSN, "d", "postgres://user:pass@localhost:5432/db", "PostgreSQL DSN")
+	flag.StringVar(&urlStoragePath, "f", "", "File storage path for urls")
+	flag.StringVar(&databaseDSN, "d", "", "PostgreSQL DSN")
 	flag.Parse()
 
 	err := env.Parse(cfg)

@@ -13,6 +13,7 @@ import (
 	"github.com/TMWF/url-shortener/internal/model"
 	"github.com/TMWF/url-shortener/internal/service"
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 )
 
 type urlHandler struct {
@@ -41,6 +42,7 @@ func (h *urlHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 
 	shortenedURL, err := h.urlService.ShortenURL(context, bodyString)
 	if err != nil {
+		logger.GetLogger().Error("Error occured while getting shortened url", zap.String("original error message", err.Error()))
 		http.Error(w, "Error occured while getting shortened url", http.StatusInternalServerError)
 		return
 	}
