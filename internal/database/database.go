@@ -7,7 +7,13 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-func NewDB(dsn string) (*sql.DB, error) {
+var dbConn *sql.DB
+
+func GetDB(dsn string) (*sql.DB, error) {
+	if dbConn != nil {
+		return dbConn, nil
+	}
+
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		return nil, err
@@ -17,5 +23,6 @@ func NewDB(dsn string) (*sql.DB, error) {
 	db.SetMaxIdleConns(25)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
+	dbConn = db
 	return db, nil
 }

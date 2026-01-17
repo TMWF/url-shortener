@@ -7,10 +7,10 @@ type PingDBService interface {
 }
 
 type pingDBServiceImpl struct {
-	storage repository.DBStorage
+	storage repository.DBPinger
 }
 
-func NewPingDBService(storage repository.DBStorage) *pingDBServiceImpl {
+func NewPingDBService(storage repository.DBPinger) *pingDBServiceImpl {
 	return &pingDBServiceImpl{storage: storage}
 }
 

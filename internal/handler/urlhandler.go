@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/TMWF/url-shortener/internal/logger"
 	"github.com/TMWF/url-shortener/internal/model"
@@ -34,8 +36,10 @@ func (h *urlHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 	}
 
 	bodyString := string(bodyBytes)
+	context, cancel := context.WithTimeout(req.Context(), 5*time.Second)
+	defer cancel()
 
-	shortenedURL, err := h.urlService.ShortenURL(bodyString)
+	shortenedURL, err := h.urlService.ShortenURL(context, bodyString)
 	if err != nil {
 		http.Error(w, "Error occured while getting shortened url", http.StatusInternalServerError)
 		return
@@ -61,7 +65,10 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	response, err := h.urlService.ShortenURLAPI(&reqBody)
+	context, cancel := context.WithTimeout(req.Context(), 5*time.Second)
+	defer cancel()
+
+	response, err := h.urlService.ShortenURLAPI(context, &reqBody)
 	if err != nil {
 		logger.GetLogger().Error("Error occured while getting shortened url")
 		http.Error(w, "Error occured while getting shortened url", http.StatusInternalServerError)
@@ -92,7 +99,9 @@ func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	originalURL, found := h.urlService.GetOriginalURL(shortID)
+	context, cancel := context.WithTimeout(req.Context(), 5*time.Second)
+	defer cancel()
+	originalURL, found := h.urlService.GetOriginalURL(context, shortID)
 	if !found {
 		http.Error(w, "Short URL not found", http.StatusNotFound)
 		return

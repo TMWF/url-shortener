@@ -1,12 +1,10 @@
 package main
 
 import (
-	"database/sql"
 	"log"
 	"net/http"
 
 	"github.com/TMWF/url-shortener/internal/config"
-	"github.com/TMWF/url-shortener/internal/database"
 	"github.com/TMWF/url-shortener/internal/handler"
 	"github.com/TMWF/url-shortener/internal/logger"
 	"github.com/TMWF/url-shortener/internal/middleware"
@@ -16,33 +14,25 @@ import (
 )
 
 func main() {
-	cfg, dbConfig := config.InitialiseConfigs()
+	cfg := config.InitialiseConfigs()
 
-	db, err := database.NewDB(dbConfig.DatabaseDSN)
-	if err != nil {
-		logger.GetLogger().Fatal("Error occured when creating DB connection")
-	}
-
-	err = logger.Initialize(cfg.LogLevel)
+	err := logger.Initialize(cfg.LogLevel)
 	if err != nil {
 		logger.GetLogger().Fatal("Error occured while initialising logger")
 	}
 	defer logger.GetLogger().Sync()
 
-	router := createRouter(cfg, db)
+	router := createRouter(cfg)
 	logger.GetLogger().Info("Starting server on port " + cfg.ServerHost)
 
 	log.Fatal(http.ListenAndServe(cfg.ServerHost, router))
 }
 
-func createRouter(config *config.Config, db *sql.DB) http.Handler {
+func createRouter(config *config.Config) http.Handler {
 
-	dbStorage := repository.NewDBStorage(db)
-	pingService := service.NewPingDBService(dbStorage)
-	pingHandler := handler.NewPingHandler(pingService)
-
-	urlStorage := repository.NewFileStorage(config)
-	urlService := service.NewURLService(urlStorage, config)
+	storage := repository.GetStorage(config)
+	// urlStorage := repository.GetStorage(config)
+	urlService := service.NewURLService(storage, config)
 	urlHandler := handler.NewURLHandler(urlService)
 
 	router := chi.NewRouter()
@@ -51,6 +41,12 @@ func createRouter(config *config.Config, db *sql.DB) http.Handler {
 	router.Post(`/`, urlHandler.ShortenURL)
 	router.Post(`/api/shorten`, urlHandler.ShortenURLAPI)
 	router.Get(`/{id}`, urlHandler.GetOriginalURL)
-	router.Get(`/ping`, pingHandler.PingDB)
+
+	if dbPinger, ok := storage.(repository.DBPinger); ok {
+		pingService := service.NewPingDBService(dbPinger)
+		pingHandler := handler.NewPingHandler(pingService)
+		router.Get(`/ping`, pingHandler.PingDB)
+	}
+
 	return router
 }

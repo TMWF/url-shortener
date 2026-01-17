@@ -14,11 +14,11 @@ type Config struct {
 	BaseURL        string `env:"BASE_URL"`
 	LogLevel       string `env:"LOG_LEVEL"`
 	URLStoragePath string `env:"FILE_STORAGE_PATH"`
+	db.PostgreSQLConfig
 }
 
-func InitialiseConfigs() (*Config, *db.PostgreSQLConfig) {
+func InitialiseConfigs() *Config {
 	cfg := &Config{}
-	dbCfg := &db.PostgreSQLConfig{}
 	var serverHostFlag string
 	var baseURLFlag string
 	var logLevel string
@@ -39,12 +39,6 @@ func InitialiseConfigs() (*Config, *db.PostgreSQLConfig) {
 		)
 	}
 
-	if err = env.Parse(dbCfg); err != nil {
-		logger.GetLogger().Fatal("Error occured while trying to parse db configs.",
-			zap.String("Original eror message", err.Error()),
-		)
-	}
-
 	if cfg.ServerHost == "" {
 		cfg.ServerHost = serverHostFlag
 	}
@@ -61,9 +55,9 @@ func InitialiseConfigs() (*Config, *db.PostgreSQLConfig) {
 		cfg.URLStoragePath = urlStoragePath
 	}
 
-	if dbCfg.DatabaseDSN == "" {
-		dbCfg.DatabaseDSN = databaseDSN
+	if cfg.DatabaseDSN == "" {
+		cfg.DatabaseDSN = databaseDSN
 	}
 
-	return cfg, dbCfg
+	return cfg
 }
