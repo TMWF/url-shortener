@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+
 	"github.com/TMWF/url-shortener/internal/config"
 	"github.com/TMWF/url-shortener/internal/logger"
 	"github.com/TMWF/url-shortener/internal/model"
@@ -9,9 +11,9 @@ import (
 )
 
 type URLService interface {
-	ShortenURL(url string) (string, error)
-	ShortenURLAPI(request *model.ShortenURLRequest) (*model.ShortenURLResponse, error)
-	GetOriginalURL(id string) (string, bool)
+	ShortenURL(ctx context.Context, url string) (string, error)
+	ShortenURLAPI(ctx context.Context, request *model.ShortenURLRequest) (*model.ShortenURLResponse, error)
+	GetOriginalURL(ctx context.Context, id string) (string, bool)
 }
 
 type defaultURLService struct {
@@ -23,13 +25,13 @@ func NewURLService(storage repository.Storage, config *config.Config) *defaultUR
 	return &defaultURLService{storage: storage, config: config}
 }
 
-func (s *defaultURLService) ShortenURL(url string) (string, error) {
-	id, err := s.storage.SaveURL(url)
+func (s *defaultURLService) ShortenURL(ctx context.Context, url string) (string, error) {
+	id, err := s.storage.SaveURL(ctx, url)
 	return s.config.BaseURL + "/" + id, err
 }
 
-func (s *defaultURLService) ShortenURLAPI(request *model.ShortenURLRequest) (*model.ShortenURLResponse, error) {
-	id, err := s.storage.SaveURL(request.URL)
+func (s *defaultURLService) ShortenURLAPI(ctx context.Context, request *model.ShortenURLRequest) (*model.ShortenURLResponse, error) {
+	id, err := s.storage.SaveURL(ctx, request.URL)
 	if err != nil {
 		logger.GetLogger().Error("Error occured while getting shortened URL ",
 			zap.String("original error message", err.Error()),
@@ -39,7 +41,7 @@ func (s *defaultURLService) ShortenURLAPI(request *model.ShortenURLRequest) (*mo
 	return &model.ShortenURLResponse{ShortenedURL: s.config.BaseURL + "/" + id}, err
 }
 
-func (s *defaultURLService) GetOriginalURL(id string) (string, bool) {
-	url, found := s.storage.GetURL(id)
+func (s *defaultURLService) GetOriginalURL(ctx context.Context, id string) (string, bool) {
+	url, found := s.storage.GetURL(ctx, id)
 	return url, found
 }

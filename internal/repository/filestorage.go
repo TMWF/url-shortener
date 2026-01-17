@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"sync"
@@ -43,14 +44,14 @@ func NewFileStorage(config *config.Config) *fileStorage {
 	return &fileStorage
 }
 
-func (fs *fileStorage) GetURL(id string) (string, bool) {
+func (fs *fileStorage) GetURL(ctx context.Context, id string) (string, bool) {
 	fs.lock.RLock()
 	defer fs.lock.RUnlock()
 	urlModel, found := fs.urlStorage[id]
 	return urlModel.OriginalURL, found
 }
 
-func (fs *fileStorage) SaveURL(url string) (string, error) {
+func (fs *fileStorage) SaveURL(ctx context.Context, url string) (string, error) {
 	fs.lock.Lock()
 	defer fs.lock.Unlock()
 	id := util.RandomString(8, util.LatinCharSet)
