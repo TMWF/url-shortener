@@ -62,7 +62,7 @@ func (dbs *dbStorageImpl) SaveBatchURL(ctx context.Context, urlBatch []model.URL
 	}
 	defer stmt.Close()
 
-	result := make([]model.URLBatchResponseDto, len(urlBatch))
+	result := make([]model.URLBatchResponseDto, 0, len(urlBatch))
 
 	for _, urlModel := range urlBatch {
 		id := util.RandomString(8, util.LatinCharSet)

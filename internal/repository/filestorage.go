@@ -91,7 +91,7 @@ func (fs *fileStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBat
 	}
 	defer file.Close()
 
-	result := make([]model.URLBatchResponseDto, len(urlBatch))
+	result := make([]model.URLBatchResponseDto, 0, len(urlBatch))
 
 	for _, urlBatchModel := range urlBatch {
 		id := util.RandomString(8, util.LatinCharSet)

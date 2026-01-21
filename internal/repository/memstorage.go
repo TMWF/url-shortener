@@ -36,7 +36,7 @@ func (ms *memStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBatc
 	ms.lock.Lock()
 	defer ms.lock.Unlock()
 
-	result := make([]model.URLBatchResponseDto, len(urlBatch))
+	result := make([]model.URLBatchResponseDto, 0, len(urlBatch))
 
 	for _, urlModel := range urlBatch {
 		id := util.RandomString(8, util.LatinCharSet)
