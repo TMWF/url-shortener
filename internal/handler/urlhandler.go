@@ -112,3 +112,39 @@ func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Location", originalURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
+
+func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "Incorrect HTTP method, only POST methods allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var reqBody = make([]model.URLBatchRequestDto, 0)
+	dec := json.NewDecoder(req.Body)
+	if err := dec.Decode(&reqBody); err != nil {
+		logger.GetLogger().Error("Error occured while decoding request body")
+		http.Error(w, "Error occured while decoding request body", http.StatusBadRequest)
+		return
+	}
+
+	context, cancel := context.WithTimeout(req.Context(), 5*time.Second)
+	defer cancel()
+
+	response, err := h.urlService.ShortenURLBatch(context, reqBody)
+	if err != nil {
+		logger.GetLogger().Error("Error occured while getting shortened url")
+		http.Error(w, "Error occured while getting shortened url", http.StatusInternalServerError)
+		return
+	}
+
+	responseBody, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
+	w.WriteHeader(http.StatusCreated)
+	w.Write(responseBody)
+}

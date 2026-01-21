@@ -40,6 +40,7 @@ func createRouter(config *config.Config) http.Handler {
 	router.Use(middleware.GzipMiddleware())
 	router.Post(`/`, urlHandler.ShortenURL)
 	router.Post(`/api/shorten`, urlHandler.ShortenURLAPI)
+	router.Post(`/api/shorten/batch`, urlHandler.ShortenURLBatch)
 	router.Get(`/{id}`, urlHandler.GetOriginalURL)
 
 	if dbPinger, ok := storage.(repository.DBPinger); ok {

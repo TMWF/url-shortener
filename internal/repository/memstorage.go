@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/TMWF/url-shortener/internal/model"
 	"github.com/TMWF/url-shortener/internal/util"
 )
 
@@ -29,4 +30,20 @@ func (ms *memStorage) GetURL(ctx context.Context, id string) (string, bool) {
 	defer ms.lock.RUnlock()
 	url, found := ms.urlStorage[id]
 	return url, found
+}
+
+func (ms *memStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error) {
+	ms.lock.Lock()
+	defer ms.lock.Unlock()
+
+	result := make([]model.URLBatchResponseDto, len(urlBatch))
+
+	for _, urlModel := range urlBatch {
+		id := util.RandomString(8, util.LatinCharSet)
+		ms.urlStorage[id] = urlModel.OriginalURL
+		responseModel := model.URLBatchResponseDto{CorrelationId: urlModel.CorrelationId, ShortURL: id}
+		result = append(result, responseModel)
+	}
+
+	return result, nil
 }

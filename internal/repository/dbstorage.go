@@ -5,6 +5,7 @@ import (
 	"database/sql"
 
 	"github.com/TMWF/url-shortener/internal/logger"
+	"github.com/TMWF/url-shortener/internal/model"
 	"github.com/TMWF/url-shortener/internal/util"
 	"go.uber.org/zap"
 )
@@ -46,4 +47,37 @@ func (dbs *dbStorageImpl) SaveURL(ctx context.Context, url string) (string, erro
 		return "", err
 	}
 	return id, nil
+}
+
+func (dbs *dbStorageImpl) SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error) {
+	tx, err := dbs.db.BeginTx(ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO urls (short_url, original_url) VALUES ($1, $2)")
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	result := make([]model.URLBatchResponseDto, len(urlBatch))
+
+	for _, urlModel := range urlBatch {
+		id := util.RandomString(8, util.LatinCharSet)
+
+		_, err := stmt.ExecContext(ctx, id, urlModel.OriginalURL)
+		if err != nil {
+			return nil, err
+		}
+		responseModel := model.URLBatchResponseDto{CorrelationId: urlModel.CorrelationId, ShortURL: id}
+		result = append(result, responseModel)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }

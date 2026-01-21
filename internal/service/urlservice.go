@@ -13,6 +13,7 @@ import (
 type URLService interface {
 	ShortenURL(ctx context.Context, url string) (string, error)
 	ShortenURLAPI(ctx context.Context, request *model.ShortenURLRequest) (*model.ShortenURLResponse, error)
+	ShortenURLBatch(ctx context.Context, request []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error)
 	GetOriginalURL(ctx context.Context, id string) (string, bool)
 }
 
@@ -39,6 +40,17 @@ func (s *defaultURLService) ShortenURLAPI(ctx context.Context, request *model.Sh
 		return &model.ShortenURLResponse{}, err
 	}
 	return &model.ShortenURLResponse{ShortenedURL: s.config.BaseURL + "/" + id}, err
+}
+
+func (s *defaultURLService) ShortenURLBatch(ctx context.Context, request []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error) {
+	response, err := s.storage.SaveBatchURL(ctx, request)
+	if err != nil {
+		logger.GetLogger().Error("Error occured while getting shortened URL ",
+			zap.String("original error message", err.Error()),
+		)
+		return nil, err
+	}
+	return response, err
 }
 
 func (s *defaultURLService) GetOriginalURL(ctx context.Context, id string) (string, bool) {

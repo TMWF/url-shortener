@@ -23,6 +23,11 @@ type MockURLService struct {
 	mock.Mock
 }
 
+// ShortenURLBatch implements [service.URLService].
+func (m *MockURLService) ShortenURLBatch(ctx context.Context, request []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error) {
+	panic("unimplemented")
+}
+
 func (m *MockURLService) ShortenURL(ctx context.Context, url string) (string, error) {
 	args := m.Called(url)
 	return args.String(0), args.Error(1)

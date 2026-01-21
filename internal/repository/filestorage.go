@@ -77,3 +77,38 @@ func (fs *fileStorage) SaveURL(ctx context.Context, url string) (string, error) 
 	}
 	return id, nil
 }
+
+func (fs *fileStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error) {
+	fs.lock.Lock()
+	defer fs.lock.Unlock()
+
+	file, err := os.OpenFile(fs.cfg.URLStoragePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		logger.GetLogger().Error("Error occured while opening file ",
+			zap.String("originalErrorMessage", err.Error()),
+		)
+		return nil, err
+	}
+	defer file.Close()
+
+	result := make([]model.URLBatchResponseDto, len(urlBatch))
+
+	for _, urlBatchModel := range urlBatch {
+		id := util.RandomString(8, util.LatinCharSet)
+		urlModel := model.URLModel{ShortURL: id, OriginalURL: urlBatchModel.OriginalURL}
+		fs.urlStorage[id] = urlModel
+		responseModel := model.URLBatchResponseDto{CorrelationId: urlBatchModel.CorrelationId, ShortURL: id}
+		result = append(result, responseModel)
+	}
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+
+	if err := encoder.Encode(fs.urlStorage); err != nil {
+		logger.GetLogger().Error("Error occured while encoding JSON ",
+			zap.String("originalErrorMessage", err.Error()),
+		)
+		return nil, err
+	}
+	return result, nil
+}
