@@ -71,7 +71,7 @@ func (dbs *dbStorageImpl) SaveBatchURL(ctx context.Context, urlBatch []model.URL
 		if err != nil {
 			return nil, err
 		}
-		responseModel := model.URLBatchResponseDto{CorrelationId: urlModel.CorrelationId, ShortURL: id}
+		responseModel := model.URLBatchResponseDto{CorrelationID: urlModel.CorrelationID, ShortURL: id}
 		result = append(result, responseModel)
 	}
 

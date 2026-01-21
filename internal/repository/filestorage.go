@@ -97,7 +97,7 @@ func (fs *fileStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBat
 		id := util.RandomString(8, util.LatinCharSet)
 		urlModel := model.URLModel{ShortURL: id, OriginalURL: urlBatchModel.OriginalURL}
 		fs.urlStorage[id] = urlModel
-		responseModel := model.URLBatchResponseDto{CorrelationId: urlBatchModel.CorrelationId, ShortURL: id}
+		responseModel := model.URLBatchResponseDto{CorrelationID: urlBatchModel.CorrelationID, ShortURL: id}
 		result = append(result, responseModel)
 	}
 

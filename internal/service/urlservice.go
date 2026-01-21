@@ -50,6 +50,12 @@ func (s *defaultURLService) ShortenURLBatch(ctx context.Context, request []model
 		)
 		return nil, err
 	}
+
+	for idx, value := range response {
+		value.ShortURL = s.config.BaseURL + "/" + value.ShortURL
+		response[idx] = value
+	}
+
 	return response, err
 }
 
