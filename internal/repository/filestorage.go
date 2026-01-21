@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"sync"
@@ -43,14 +44,14 @@ func NewFileStorage(config *config.Config) *fileStorage {
 	return &fileStorage
 }
 
-func (fs *fileStorage) GetURL(id string) (string, bool) {
+func (fs *fileStorage) GetURL(ctx context.Context, id string) (string, bool) {
 	fs.lock.RLock()
 	defer fs.lock.RUnlock()
 	urlModel, found := fs.urlStorage[id]
 	return urlModel.OriginalURL, found
 }
 
-func (fs *fileStorage) SaveURL(url string) (string, error) {
+func (fs *fileStorage) SaveURL(ctx context.Context, url string) (string, error) {
 	fs.lock.Lock()
 	defer fs.lock.Unlock()
 	id := util.RandomString(8, util.LatinCharSet)
@@ -75,4 +76,39 @@ func (fs *fileStorage) SaveURL(url string) (string, error) {
 		return "", err
 	}
 	return id, nil
+}
+
+func (fs *fileStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error) {
+	fs.lock.Lock()
+	defer fs.lock.Unlock()
+
+	file, err := os.OpenFile(fs.cfg.URLStoragePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		logger.GetLogger().Error("Error occured while opening file ",
+			zap.String("originalErrorMessage", err.Error()),
+		)
+		return nil, err
+	}
+	defer file.Close()
+
+	result := make([]model.URLBatchResponseDto, 0, len(urlBatch))
+
+	for _, urlBatchModel := range urlBatch {
+		id := util.RandomString(8, util.LatinCharSet)
+		urlModel := model.URLModel{ShortURL: id, OriginalURL: urlBatchModel.OriginalURL}
+		fs.urlStorage[id] = urlModel
+		responseModel := model.URLBatchResponseDto{CorrelationID: urlBatchModel.CorrelationID, ShortURL: id}
+		result = append(result, responseModel)
+	}
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+
+	if err := encoder.Encode(fs.urlStorage); err != nil {
+		logger.GetLogger().Error("Error occured while encoding JSON ",
+			zap.String("originalErrorMessage", err.Error()),
+		)
+		return nil, err
+	}
+	return result, nil
 }
