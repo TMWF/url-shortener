@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/TMWF/url-shortener/internal/middleware"
 	"github.com/TMWF/url-shortener/internal/model"
@@ -25,7 +26,8 @@ type MockURLService struct {
 
 // ShortenURLBatch implements [service.URLService].
 func (m *MockURLService) ShortenURLBatch(ctx context.Context, request []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error) {
-	panic("unimplemented")
+	args := m.Called(ctx, request)
+	return args.Get(0).([]model.URLBatchResponseDto), args.Error(1)
 }
 
 func (m *MockURLService) ShortenURL(ctx context.Context, url string) (string, error) {
@@ -246,4 +248,131 @@ func TestGetOriginalURL(t *testing.T) {
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
 	})
+}
+
+func TestShortenURLBatch(t *testing.T) {
+	tests := []struct {
+		name                 string
+		method               string
+		requestBody          []model.URLBatchRequestDto
+		mockServiceResponse  []model.URLBatchResponseDto
+		mockServiceError     error
+		expectedStatusCode   int
+		expectedResponseBody string
+		expectLogError       bool
+	}{
+		{
+			name:   "Success Batch Shortening",
+			method: http.MethodPost,
+			requestBody: []model.URLBatchRequestDto{
+				{CorrelationID: "1", OriginalURL: "http://example.com/long/url/1"},
+				{CorrelationID: "2", OriginalURL: "http://example.com/long/url/2"},
+			},
+			mockServiceResponse: []model.URLBatchResponseDto{
+				{CorrelationID: "1", ShortURL: "http://localhost:8080/abc"},
+				{CorrelationID: "2", ShortURL: "http://localhost:8080/def"},
+			},
+			mockServiceError:     nil,
+			expectedStatusCode:   http.StatusCreated,
+			expectedResponseBody: `[{"correlation_id":"1","short_url":"http://localhost:8080/abc"},{"correlation_id":"2","short_url":"http://localhost:8080/def"}]`,
+			expectLogError:       false,
+		},
+		{
+			name:                 "Invalid Method GET",
+			method:               http.MethodGet,
+			requestBody:          nil, // Не используется для этого кейса
+			mockServiceResponse:  nil,
+			mockServiceError:     nil,
+			expectedStatusCode:   http.StatusMethodNotAllowed,
+			expectedResponseBody: "Incorrect HTTP method, only POST methods allowed\n",
+			expectLogError:       false,
+		},
+		{
+			name:                 "Invalid JSON Body",
+			method:               http.MethodPost,
+			requestBody:          nil, // Будет использовано для создания невалидного JSON
+			mockServiceResponse:  nil,
+			mockServiceError:     nil,
+			expectedStatusCode:   http.StatusBadRequest,
+			expectedResponseBody: "Error occured while decoding request body\n",
+			expectLogError:       true,
+		},
+		// {
+		// 	name:                 "Empty Batch Request",
+		// 	method:               http.MethodPost,
+		// 	requestBody:          []model.URLBatchRequestDto{},
+		// 	mockServiceResponse:  nil, // Не будет вызвано
+		// 	mockServiceError:     nil,
+		// 	expectedStatusCode:   http.StatusBadRequest,
+		// 	expectedResponseBody: "Request body cannot be empty\n",
+		// 	expectLogError:       false,
+		// },
+		{
+			name:   "Service Returns Error",
+			method: http.MethodPost,
+			requestBody: []model.URLBatchRequestDto{
+				{CorrelationID: "1", OriginalURL: "http://example.com/error"},
+			},
+			mockServiceResponse:  nil,
+			mockServiceError:     errors.New("database connection failed"),
+			expectedStatusCode:   http.StatusInternalServerError,
+			expectedResponseBody: "Error occured while getting shortened url\n",
+			expectLogError:       true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockSvc := new(MockURLService)
+
+			var reqBodyReader io.Reader
+			if tt.requestBody != nil { // Для тестов с валидным JSON
+				bodyBytes, err := json.Marshal(tt.requestBody)
+				if err != nil {
+					t.Fatalf("Failed to marshal request body for test setup: %v", err)
+				}
+				reqBodyReader = bytes.NewReader(bodyBytes)
+			} else if tt.name == "Invalid JSON Body" {
+				reqBodyReader = strings.NewReader(`{ "invalid": "json" `) // Специально невалидный JSON
+			} else {
+				reqBodyReader = nil // Для GET или пустых тел, где не ожидается тело
+			}
+
+			req := httptest.NewRequest(tt.method, "/api/batch", reqBodyReader)
+			if tt.method == http.MethodPost && tt.requestBody != nil {
+				req.Header.Set("Content-Type", "application/json")
+			}
+
+			// Определяем ожидаемое поведение мока, если сервис будет вызван
+			if tt.method == http.MethodPost && tt.name != "Invalid JSON Body" && tt.name != "Empty Batch Request" {
+				// Обратите внимание на аргументы: ctx и request (тип []model.URLBatchRequestDto)
+				// mock.Anything для контекста, так как мы не проверяем его содержимое напрямую в моке.
+				// request можно сравнивать с mock.Anything или передавать конкретные ожидаемые значения.
+				mockSvc.On("ShortenURLBatch", mock.Anything, tt.requestBody).Return(tt.mockServiceResponse, tt.mockServiceError)
+			}
+
+			w := httptest.NewRecorder()
+			h := NewURLHandler(mockSvc) // Создаем хендлер с моком
+
+			// Устанавливаем контекст для запроса, чтобы таймаут не влиял на тесты,
+			// но чтобы контекст всегда был доступен в сервисе.
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second) // Короткий таймаут для тестов
+			defer cancel()
+			req = req.WithContext(ctx)
+
+			h.ShortenURLBatch(w, req)
+
+			// Проверки
+			assert.Equal(t, tt.expectedStatusCode, w.Code, "Expected status code mismatch")
+			assert.Equal(t, tt.expectedResponseBody, w.Body.String(), "Expected response body mismatch")
+
+			if tt.method == http.MethodPost && tt.name != "Invalid JSON Body" && tt.name != "Empty Batch Request" && tt.mockServiceError == nil {
+				mockSvc.AssertCalled(t, "ShortenURLBatch", mock.Anything, tt.requestBody)
+			} else if tt.name == "Service Returns Error" {
+				mockSvc.AssertCalled(t, "ShortenURLBatch", mock.Anything, tt.requestBody)
+			} else {
+				mockSvc.AssertNotCalled(t, "ShortenURLBatch", mock.Anything, mock.Anything) // Убеждаемся, что сервис не был вызван
+			}
+		})
+	}
 }
