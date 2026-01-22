@@ -29,7 +29,14 @@ func NewURLService(storage repository.Storage, config *config.Config) *defaultUR
 
 func (s *defaultURLService) ShortenURL(ctx context.Context, url string) (string, error) {
 	id, err := s.storage.SaveURL(ctx, url)
-	return s.config.BaseURL + "/" + id, err
+	if err != nil && !errors.Is(err, repository.ErrConflict) {
+		logger.GetLogger().Error("Error occurred while saving URL",
+			zap.String("original error message", err.Error()),
+			zap.String("url", url),
+		)
+		return "", err
+	}
+	return s.config.BaseURL + "/" + id, nil
 }
 
 func (s *defaultURLService) ShortenURLAPI(ctx context.Context, request *model.ShortenURLRequest) (*model.ShortenURLResponse, error) {

@@ -6,11 +6,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	// Укажите правильный путь до вашего репозитория
 )
 
-// --- Мок DBPinger (если он не определен в другом месте для тестов) ---
-// Эта структура должна быть в том же пакете, что и тесты, или импортирована.
 type mockDBPinger struct {
 	mock.Mock
 }
@@ -50,9 +47,6 @@ func TestPingDBService_PingDB(t *testing.T) {
 
 			if tt.expectPingCalled {
 				mockRepo.On("PingDB").Return(tt.mockPingError).Once()
-			} else {
-				// Если метод не должен быть вызван, мы можем не настраивать On,
-				// а потом проверить с помощью AssertNotCalled.
 			}
 
 			pingService := NewPingDBService(mockRepo)

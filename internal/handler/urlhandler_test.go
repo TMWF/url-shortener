@@ -69,7 +69,6 @@ func TestGzipMiddlewareIntegration(t *testing.T) {
 	mockSvc := new(MockURLService)
 	h := NewURLHandler(mockSvc)
 
-	// Оборачиваем хендлер в мидлвар
 	gzipHandler := middleware.GzipMiddleware()(http.HandlerFunc(h.ShortenURLAPI))
 
 	t.Run("should_compress_response", func(t *testing.T) {
@@ -90,7 +89,6 @@ func TestGzipMiddlewareIntegration(t *testing.T) {
 		assert.Equal(t, "gzip", w.Header().Get("Content-Encoding"))
 		assert.Empty(t, w.Header().Get("Content-Length"), "Content-Length should be deleted when gzipping")
 
-		// Проверяем, что тело действительно сжато и распаковывается в корректный JSON
 		unzippedBody := gunzipData(t, w.Body.Bytes())
 		var actualResp model.ShortenURLResponse
 		json.Unmarshal(unzippedBody, &actualResp)
@@ -220,7 +218,6 @@ func TestGetOriginalURL(t *testing.T) {
 
 		req := httptest.NewRequest(http.MethodGet, "/"+id, nil)
 
-		// Настройка chi context, чтобы chi.URLParam работал вне реального роутера
 		rctx := chi.NewRouteContext()
 		rctx.URLParams.Add("id", id)
 		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
@@ -280,7 +277,7 @@ func TestShortenURLBatch(t *testing.T) {
 		{
 			name:                 "Invalid Method GET",
 			method:               http.MethodGet,
-			requestBody:          nil, // Не используется для этого кейса
+			requestBody:          nil,
 			mockServiceResponse:  nil,
 			mockServiceError:     nil,
 			expectedStatusCode:   http.StatusMethodNotAllowed,
@@ -290,7 +287,7 @@ func TestShortenURLBatch(t *testing.T) {
 		{
 			name:                 "Invalid JSON Body",
 			method:               http.MethodPost,
-			requestBody:          nil, // Будет использовано для создания невалидного JSON
+			requestBody:          nil,
 			mockServiceResponse:  nil,
 			mockServiceError:     nil,
 			expectedStatusCode:   http.StatusBadRequest,
@@ -326,16 +323,16 @@ func TestShortenURLBatch(t *testing.T) {
 			mockSvc := new(MockURLService)
 
 			var reqBodyReader io.Reader
-			if tt.requestBody != nil { // Для тестов с валидным JSON
+			if tt.requestBody != nil {
 				bodyBytes, err := json.Marshal(tt.requestBody)
 				if err != nil {
 					t.Fatalf("Failed to marshal request body for test setup: %v", err)
 				}
 				reqBodyReader = bytes.NewReader(bodyBytes)
 			} else if tt.name == "Invalid JSON Body" {
-				reqBodyReader = strings.NewReader(`{ "invalid": "json" `) // Специально невалидный JSON
+				reqBodyReader = strings.NewReader(`{ "invalid": "json" `)
 			} else {
-				reqBodyReader = nil // Для GET или пустых тел, где не ожидается тело
+				reqBodyReader = nil
 			}
 
 			req := httptest.NewRequest(tt.method, "/api/batch", reqBodyReader)
@@ -343,20 +340,14 @@ func TestShortenURLBatch(t *testing.T) {
 				req.Header.Set("Content-Type", "application/json")
 			}
 
-			// Определяем ожидаемое поведение мока, если сервис будет вызван
 			if tt.method == http.MethodPost && tt.name != "Invalid JSON Body" && tt.name != "Empty Batch Request" {
-				// Обратите внимание на аргументы: ctx и request (тип []model.URLBatchRequestDto)
-				// mock.Anything для контекста, так как мы не проверяем его содержимое напрямую в моке.
-				// request можно сравнивать с mock.Anything или передавать конкретные ожидаемые значения.
 				mockSvc.On("ShortenURLBatch", mock.Anything, tt.requestBody).Return(tt.mockServiceResponse, tt.mockServiceError)
 			}
 
 			w := httptest.NewRecorder()
-			h := NewURLHandler(mockSvc) // Создаем хендлер с моком
+			h := NewURLHandler(mockSvc)
 
-			// Устанавливаем контекст для запроса, чтобы таймаут не влиял на тесты,
-			// но чтобы контекст всегда был доступен в сервисе.
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second) // Короткий таймаут для тестов
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 			req = req.WithContext(ctx)
 
@@ -371,7 +362,7 @@ func TestShortenURLBatch(t *testing.T) {
 			} else if tt.name == "Service Returns Error" {
 				mockSvc.AssertCalled(t, "ShortenURLBatch", mock.Anything, tt.requestBody)
 			} else {
-				mockSvc.AssertNotCalled(t, "ShortenURLBatch", mock.Anything, mock.Anything) // Убеждаемся, что сервис не был вызван
+				mockSvc.AssertNotCalled(t, "ShortenURLBatch", mock.Anything, mock.Anything)
 			}
 		})
 	}
