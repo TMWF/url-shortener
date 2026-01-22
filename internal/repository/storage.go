@@ -13,7 +13,7 @@ import (
 type Storage interface {
 	SaveURL(ctx context.Context, url string) (string, error)
 	GetURL(ctx context.Context, id string) (string, bool)
-	SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error)
+	SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]string, error)
 }
 
 func GetStorage(config *config.Config) Storage {
