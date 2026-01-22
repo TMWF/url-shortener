@@ -3,12 +3,15 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/TMWF/url-shortener/internal/logger"
 	"github.com/TMWF/url-shortener/internal/model"
 	"github.com/TMWF/url-shortener/internal/util"
 	"go.uber.org/zap"
 )
+
+var ErrConflict = errors.New("url already exists")
 
 type DBPinger interface {
 	PingDB() error
@@ -42,10 +45,30 @@ func (dbs *dbStorageImpl) GetURL(ctx context.Context, id string) (string, bool) 
 // SaveURL implements [Storage].
 func (dbs *dbStorageImpl) SaveURL(ctx context.Context, url string) (string, error) {
 	id := util.RandomString(8, util.LatinCharSet)
-	_, err := dbs.db.ExecContext(ctx, "INSERT INTO urls (short_url, original_url) VALUES ($1, $2)", id, url)
+	result, err := dbs.db.ExecContext(ctx, "INSERT INTO urls (short_url, original_url) VALUES ($1, $2) ON CONFLICT (original_url) DO NOTHING", id, url)
 	if err != nil {
 		return "", err
 	}
+
+	rowsAffected, err := result.RowsAffected()
+
+	if err != nil {
+		return "", err
+	}
+
+	if rowsAffected == 0 {
+		row := dbs.db.QueryRowContext(ctx, "SELECT original_url FROM urls WHERE original_url = $1 LIMIT 1", url)
+		var shortUrlFromDB string
+		if err := row.Scan(&shortUrlFromDB); err != nil {
+			logger.GetLogger().Error("Error occured while getting data from database",
+				zap.String("original error message", err.Error()),
+			)
+			return "", err
+		}
+
+		return shortUrlFromDB, ErrConflict
+	}
+
 	return id, nil
 }
 

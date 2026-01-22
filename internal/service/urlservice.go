@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"github.com/TMWF/url-shortener/internal/config"
 	"github.com/TMWF/url-shortener/internal/logger"
@@ -33,11 +34,11 @@ func (s *defaultURLService) ShortenURL(ctx context.Context, url string) (string,
 
 func (s *defaultURLService) ShortenURLAPI(ctx context.Context, request *model.ShortenURLRequest) (*model.ShortenURLResponse, error) {
 	id, err := s.storage.SaveURL(ctx, request.URL)
-	if err != nil {
+	if err != nil && !errors.Is(err, repository.ErrConflict) {
 		logger.GetLogger().Error("Error occured while getting shortened URL ",
 			zap.String("original error message", err.Error()),
 		)
-		return &model.ShortenURLResponse{}, err
+		return nil, err
 	}
 	return &model.ShortenURLResponse{ShortenedURL: s.config.BaseURL + "/" + id}, err
 }

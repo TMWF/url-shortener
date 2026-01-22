@@ -6,5 +6,5 @@ CREATE TABLE IF NOT EXISTS urls (
     original_url VARCHAR(250) NOT NULL
 );
 
--- Базовый индекс для поиска по названию
-CREATE INDEX IF NOT EXISTS idx_urls_short_url ON urls(short_url);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_urls_short_url_unique ON urls(short_url);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_urls_original_url_unique ON urls (original_url);

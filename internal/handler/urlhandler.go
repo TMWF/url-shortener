@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/TMWF/url-shortener/internal/logger"
 	"github.com/TMWF/url-shortener/internal/model"
+	"github.com/TMWF/url-shortener/internal/repository"
 	"github.com/TMWF/url-shortener/internal/service"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
@@ -41,7 +43,8 @@ func (h *urlHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 	defer cancel()
 
 	shortenedURL, err := h.urlService.ShortenURL(context, bodyString)
-	if err != nil {
+	var isConflictError = errors.Is(err, repository.ErrConflict)
+	if err != nil && !isConflictError {
 		logger.GetLogger().Error("Error occured while getting shortened url", zap.String("original error message", err.Error()))
 		http.Error(w, "Error occured while getting shortened url", http.StatusInternalServerError)
 		return
@@ -49,7 +52,13 @@ func (h *urlHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Content-Length", strconv.Itoa(len(shortenedURL)))
-	w.WriteHeader(http.StatusCreated)
+
+	if isConflictError {
+		w.WriteHeader(http.StatusConflict)
+	} else {
+		w.WriteHeader(http.StatusCreated)
+	}
+
 	fmt.Fprint(w, shortenedURL)
 }
 
@@ -71,7 +80,9 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 	defer cancel()
 
 	response, err := h.urlService.ShortenURLAPI(context, &reqBody)
-	if err != nil {
+	var isConflictError = errors.Is(err, repository.ErrConflict)
+
+	if err != nil && !isConflictError {
 		logger.GetLogger().Error("Error occured while getting shortened url")
 		http.Error(w, "Error occured while getting shortened url", http.StatusInternalServerError)
 		return
@@ -85,7 +96,11 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
-	w.WriteHeader(http.StatusCreated)
+	if isConflictError {
+		w.WriteHeader(http.StatusConflict)
+	} else {
+		w.WriteHeader(http.StatusCreated)
+	}
 	w.Write(responseBody)
 }
 
