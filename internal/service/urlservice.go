@@ -36,7 +36,7 @@ func (s *defaultURLService) ShortenURL(ctx context.Context, url string) (string,
 		)
 		return "", err
 	}
-	return s.config.BaseURL + "/" + id, nil
+	return s.config.BaseURL + "/" + id, err
 }
 
 func (s *defaultURLService) ShortenURLAPI(ctx context.Context, request *model.ShortenURLRequest) (*model.ShortenURLResponse, error) {

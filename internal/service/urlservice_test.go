@@ -109,9 +109,9 @@ func TestDefaultURLService_ShortenURLAPI(t *testing.T) {
 			name:             "API Shortening with Storage Error",
 			originalURL:      "http://original.com/api_error",
 			shortID:          "",
-			mockStorageError: dbErr,
+			mockStorageError: errDB,
 			expectedResponse: nil,
-			expectedError:    dbErr,
+			expectedError:    errDB,
 			expectLogError:   true,
 		},
 		{
@@ -189,9 +189,9 @@ func TestDefaultURLService_ShortenURLBatch(t *testing.T) {
 				{CorrelationID: "1", OriginalURL: "http://example.com/error_batch"},
 			},
 			mockStorageIDs:   nil,
-			mockStorageError: dbErr,
+			mockStorageError: errDB,
 			expectedResponse: nil,
-			expectedError:    dbErr,
+			expectedError:    errDB,
 			expectLogError:   true,
 		},
 		// {
@@ -279,4 +279,4 @@ func TestDefaultURLService_GetOriginalURL(t *testing.T) {
 }
 
 // --- Вспомогательные переменные (если нужны) ---
-var dbErr = errors.New("database error")
+var errDB = errors.New("database error")
