@@ -72,7 +72,7 @@ func (dbs *dbStorageImpl) SaveURL(ctx context.Context, url string) (string, erro
 	return id, nil
 }
 
-func (dbs *dbStorageImpl) SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error) {
+func (dbs *dbStorageImpl) SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]string, error) {
 	tx, err := dbs.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (dbs *dbStorageImpl) SaveBatchURL(ctx context.Context, urlBatch []model.URL
 	}
 	defer stmt.Close()
 
-	result := make([]model.URLBatchResponseDto, 0, len(urlBatch))
+	result := make([]string, 0, len(urlBatch))
 
 	for _, urlModel := range urlBatch {
 		id := util.RandomString(8, util.LatinCharSet)
@@ -94,8 +94,7 @@ func (dbs *dbStorageImpl) SaveBatchURL(ctx context.Context, urlBatch []model.URL
 		if err != nil {
 			return nil, err
 		}
-		responseModel := model.URLBatchResponseDto{CorrelationID: urlModel.CorrelationID, ShortURL: id}
-		result = append(result, responseModel)
+		result = append(result, id)
 	}
 
 	if err = tx.Commit(); err != nil {

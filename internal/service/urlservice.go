@@ -44,7 +44,7 @@ func (s *defaultURLService) ShortenURLAPI(ctx context.Context, request *model.Sh
 }
 
 func (s *defaultURLService) ShortenURLBatch(ctx context.Context, request []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error) {
-	response, err := s.storage.SaveBatchURL(ctx, request)
+	ids, err := s.storage.SaveBatchURL(ctx, request)
 	if err != nil {
 		logger.GetLogger().Error("Error occured while getting shortened URL ",
 			zap.String("original error message", err.Error()),
@@ -52,9 +52,11 @@ func (s *defaultURLService) ShortenURLBatch(ctx context.Context, request []model
 		return nil, err
 	}
 
-	for idx, value := range response {
-		value.ShortURL = s.config.BaseURL + "/" + value.ShortURL
-		response[idx] = value
+	response := make([]model.URLBatchResponseDto, 0, len(request))
+	for idx, id := range ids {
+		shortUrl := s.config.BaseURL + "/" + id
+		responseModel := model.URLBatchResponseDto{CorrelationID: request[idx].CorrelationID, ShortURL: shortUrl}
+		response = append(response, responseModel)
 	}
 
 	return response, err

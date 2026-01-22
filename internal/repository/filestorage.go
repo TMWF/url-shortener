@@ -78,7 +78,7 @@ func (fs *fileStorage) SaveURL(ctx context.Context, url string) (string, error) 
 	return id, nil
 }
 
-func (fs *fileStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error) {
+func (fs *fileStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]string, error) {
 	fs.lock.Lock()
 	defer fs.lock.Unlock()
 
@@ -91,14 +91,13 @@ func (fs *fileStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBat
 	}
 	defer file.Close()
 
-	result := make([]model.URLBatchResponseDto, 0, len(urlBatch))
+	result := make([]string, 0, len(urlBatch))
 
 	for _, urlBatchModel := range urlBatch {
 		id := util.RandomString(8, util.LatinCharSet)
 		urlModel := model.URLModel{ShortURL: id, OriginalURL: urlBatchModel.OriginalURL}
 		fs.urlStorage[id] = urlModel
-		responseModel := model.URLBatchResponseDto{CorrelationID: urlBatchModel.CorrelationID, ShortURL: id}
-		result = append(result, responseModel)
+		result = append(result, id)
 	}
 
 	encoder := json.NewEncoder(file)

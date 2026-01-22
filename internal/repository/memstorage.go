@@ -32,17 +32,16 @@ func (ms *memStorage) GetURL(ctx context.Context, id string) (string, bool) {
 	return url, found
 }
 
-func (ms *memStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error) {
+func (ms *memStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]string, error) {
 	ms.lock.Lock()
 	defer ms.lock.Unlock()
 
-	result := make([]model.URLBatchResponseDto, 0, len(urlBatch))
+	result := make([]string, 0, len(urlBatch))
 
 	for _, urlModel := range urlBatch {
 		id := util.RandomString(8, util.LatinCharSet)
 		ms.urlStorage[id] = urlModel.OriginalURL
-		responseModel := model.URLBatchResponseDto{CorrelationID: urlModel.CorrelationID, ShortURL: id}
-		result = append(result, responseModel)
+		result = append(result, id)
 	}
 
 	return result, nil
