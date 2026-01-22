@@ -58,15 +58,15 @@ func (dbs *dbStorageImpl) SaveURL(ctx context.Context, url string) (string, erro
 
 	if rowsAffected == 0 {
 		row := dbs.db.QueryRowContext(ctx, "SELECT original_url FROM urls WHERE original_url = $1 LIMIT 1", url)
-		var shortUrlFromDB string
-		if err := row.Scan(&shortUrlFromDB); err != nil {
+		var shortURLFromDB string
+		if err := row.Scan(&shortURLFromDB); err != nil {
 			logger.GetLogger().Error("Error occured while getting data from database",
 				zap.String("original error message", err.Error()),
 			)
 			return "", err
 		}
 
-		return shortUrlFromDB, ErrConflict
+		return shortURLFromDB, ErrConflict
 	}
 
 	return id, nil
