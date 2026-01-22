@@ -54,8 +54,8 @@ func (s *defaultURLService) ShortenURLBatch(ctx context.Context, request []model
 
 	response := make([]model.URLBatchResponseDto, 0, len(request))
 	for idx, id := range ids {
-		shortUrl := s.config.BaseURL + "/" + id
-		responseModel := model.URLBatchResponseDto{CorrelationID: request[idx].CorrelationID, ShortURL: shortUrl}
+		shortURL := s.config.BaseURL + "/" + id
+		responseModel := model.URLBatchResponseDto{CorrelationID: request[idx].CorrelationID, ShortURL: shortURL}
 		response = append(response, responseModel)
 	}
 
