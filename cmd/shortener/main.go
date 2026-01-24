@@ -14,8 +14,7 @@ import (
 )
 
 func main() {
-	cfg := config.Config{}
-	cfg.ParseFlags()
+	cfg := config.InitialiseConfigs()
 
 	err := logger.Initialize(cfg.LogLevel)
 	if err != nil {
@@ -29,9 +28,11 @@ func main() {
 	log.Fatal(http.ListenAndServe(cfg.ServerHost, router))
 }
 
-func createRouter(config config.Config) http.Handler {
-	urlStorage := repository.NewFileStorage(&config)
-	urlService := service.NewURLService(urlStorage, &config)
+func createRouter(config *config.Config) http.Handler {
+
+	storage := repository.GetStorage(config)
+	// urlStorage := repository.GetStorage(config)
+	urlService := service.NewURLService(storage, config)
 	urlHandler := handler.NewURLHandler(urlService)
 
 	router := chi.NewRouter()
@@ -39,6 +40,14 @@ func createRouter(config config.Config) http.Handler {
 	router.Use(middleware.GzipMiddleware())
 	router.Post(`/`, urlHandler.ShortenURL)
 	router.Post(`/api/shorten`, urlHandler.ShortenURLAPI)
+	router.Post(`/api/shorten/batch`, urlHandler.ShortenURLBatch)
 	router.Get(`/{id}`, urlHandler.GetOriginalURL)
+
+	if dbPinger, ok := storage.(repository.DBPinger); ok {
+		pingService := service.NewPingDBService(dbPinger)
+		pingHandler := handler.NewPingHandler(pingService)
+		router.Get(`/ping`, pingHandler.PingDB)
+	}
+
 	return router
 }
