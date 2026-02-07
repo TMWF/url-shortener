@@ -17,7 +17,7 @@ type memStorage struct {
 }
 
 func newMemStorage() *memStorage {
-	return &memStorage{urlStorage: make(map[string]string)}
+	return &memStorage{urlStorage: make(map[string]string), userUrls: make(map[int][]string)}
 }
 
 func (ms *memStorage) SaveURL(ctx context.Context, url string) (string, error) {
