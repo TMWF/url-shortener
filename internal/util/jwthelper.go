@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/TMWF/url-shortener/internal/config"
+	"github.com/TMWF/url-shortener/internal/model"
 	"github.com/golang-jwt/jwt/v4"
 )
 
@@ -20,7 +21,7 @@ func NewJWTHelper(cfg *config.Config) *defaultJWTHelper {
 }
 
 func (helper *defaultJWTHelper) BuildJWTString(userID int) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, model.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(helper.config.TokenExp)),
 		},
