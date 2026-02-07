@@ -13,7 +13,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func JwtTokenMiddleware(config config.Config) func(next http.Handler) http.Handler {
+func JwtTokenMiddleware(config *config.Config) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			jwtCookie, _ := r.Cookie("AuthToken")
@@ -35,7 +35,7 @@ func JwtTokenMiddleware(config config.Config) func(next http.Handler) http.Handl
 	}
 }
 
-func getUserID(tokenString string, config config.Config) int {
+func getUserID(tokenString string, config *config.Config) int {
 	claims := &model.Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims,
 		func(t *jwt.Token) (interface{}, error) {

@@ -36,6 +36,7 @@ func createRouter(config *config.Config) http.Handler {
 	urlHandler := handler.NewURLHandler(urlService, jwtHelper)
 
 	router := chi.NewRouter()
+	router.Use(middleware.JwtTokenMiddleware(config))
 	router.Use(middleware.RequestLoggerMiddleware(logger.GetLogger()))
 	router.Use(middleware.GzipMiddleware())
 	router.Post(`/`, urlHandler.ShortenURL)
