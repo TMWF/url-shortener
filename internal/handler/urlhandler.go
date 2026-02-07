@@ -75,7 +75,7 @@ func (h *urlHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "Error occured while getting jwtToken", http.StatusInternalServerError)
 		return
 	}
-	cookie := http.Cookie{Name: util.USER_ID, Value: jwtToken}
+	cookie := http.Cookie{Name: string(util.UserID), Value: jwtToken}
 	http.SetCookie(w, &cookie)
 
 	if isConflictError {
@@ -142,7 +142,7 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "Error occured while getting jwtToken", http.StatusInternalServerError)
 		return
 	}
-	cookie := http.Cookie{Name: util.USER_ID, Value: jwtToken}
+	cookie := http.Cookie{Name: string(util.UserID), Value: jwtToken}
 	http.SetCookie(w, &cookie)
 
 	if isConflictError {
@@ -230,7 +230,7 @@ func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, "Error occured while getting jwtToken", http.StatusInternalServerError)
 		return
 	}
-	cookie := http.Cookie{Name: util.USER_ID, Value: jwtToken}
+	cookie := http.Cookie{Name: string(util.UserID), Value: jwtToken}
 	http.SetCookie(w, &cookie)
 
 	w.WriteHeader(http.StatusCreated)
@@ -279,20 +279,20 @@ func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *urlHandler) getContextWithUserIDIfNeeded(ctx context.Context) (context.Context, error) {
-	_, ok := ctx.Value(util.USER_ID).(int)
+	_, ok := ctx.Value(util.UserID).(int)
 	if !ok {
 		logger.GetLogger().Info("UserID not found in context")
 		userID, err := h.urlService.SaveUser(ctx)
 		if err != nil {
 			return nil, err
 		}
-		return context.WithValue(ctx, util.USER_ID, userID), nil
+		return context.WithValue(ctx, util.UserID, userID), nil
 	}
 	return ctx, nil
 }
 
 func (h *urlHandler) requireUserIDFromContext(ctx context.Context) (int, error) {
-	userID, ok := ctx.Value(util.USER_ID).(int)
+	userID, ok := ctx.Value(util.UserID).(int)
 	if !ok {
 		logger.GetLogger().Error("UserID unexpectedly not found in context")
 		return -1, repository.ErrUserIDAbsent

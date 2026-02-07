@@ -23,7 +23,7 @@ func newMemStorage() *memStorage {
 func (ms *memStorage) SaveURL(ctx context.Context, url string) (string, error) {
 	ms.lock.Lock()
 	defer ms.lock.Unlock()
-	userID, ok := ctx.Value(util.USER_ID).(int)
+	userID, ok := ctx.Value(util.UserID).(int)
 
 	if !ok || userID < 1 {
 		logger.GetLogger().Error("UserID unexpectedly not found in context")
@@ -63,7 +63,7 @@ func (ms *memStorage) GetUsersURLs(ctx context.Context) ([]model.GetUserURLsResp
 	ms.lock.RLock()
 	defer ms.lock.RUnlock()
 
-	userID, ok := ctx.Value(util.USER_ID).(int)
+	userID, ok := ctx.Value(util.UserID).(int)
 
 	if !ok || userID < 1 {
 		logger.GetLogger().Error("UserID unexpectedly not found in context")

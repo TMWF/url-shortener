@@ -25,7 +25,7 @@ func JwtTokenMiddleware(config config.Config) func(next http.Handler) http.Handl
 				)
 				userID := getUserID(token, config)
 				if userID > 0 {
-					ctx := context.WithValue(r.Context(), util.USER_ID, userID)
+					ctx := context.WithValue(r.Context(), util.UserID, userID)
 					r = r.WithContext(ctx)
 				}
 			}

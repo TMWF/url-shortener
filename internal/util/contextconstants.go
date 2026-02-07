@@ -1,3 +1,5 @@
 package util
 
-const USER_ID = "UserID"
+type UserIDKey string
+
+const UserID UserIDKey = "UserID"

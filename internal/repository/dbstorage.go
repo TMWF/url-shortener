@@ -45,7 +45,7 @@ func (dbs *dbStorageImpl) GetURL(ctx context.Context, id string) (string, bool) 
 
 // SaveURL implements [Storage].
 func (dbs *dbStorageImpl) SaveURL(ctx context.Context, url string) (string, error) {
-	userID, ok := ctx.Value(util.USER_ID).(int)
+	userID, ok := ctx.Value(util.UserID).(int)
 
 	if !ok || userID < 1 {
 		logger.GetLogger().Error("UserID unexpectedly not found in context")
@@ -117,7 +117,7 @@ func (dbs *dbStorageImpl) SaveURL(ctx context.Context, url string) (string, erro
 }
 
 func (dbs *dbStorageImpl) SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]string, error) {
-	userID, ok := ctx.Value(util.USER_ID).(int)
+	userID, ok := ctx.Value(util.UserID).(int)
 
 	if !ok || userID < 1 {
 		logger.GetLogger().Error("UserID unexpectedly not found in context")
@@ -169,7 +169,7 @@ func (dbs *dbStorageImpl) SaveBatchURL(ctx context.Context, urlBatch []model.URL
 }
 
 func (dbs *dbStorageImpl) GetUsersURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error) {
-	userID, ok := ctx.Value(util.USER_ID).(int)
+	userID, ok := ctx.Value(util.UserID).(int)
 
 	if !ok || userID < 1 {
 		logger.GetLogger().Error("UserID unexpectedly not found in context")
