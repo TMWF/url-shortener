@@ -14,6 +14,8 @@ import (
 )
 
 type fileStorage struct {
+	userID     int
+	userUrls   map[int][]string
 	urlStorage map[string]model.URLModel
 	lock       sync.RWMutex
 	cfg        *config.Config
@@ -113,9 +115,35 @@ func (fs *fileStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBat
 }
 
 func (fs *fileStorage) GetUsersURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error) {
-	panic("Method not implemented")
+	fs.lock.RLock()
+	defer fs.lock.RUnlock()
+
+	userID, ok := ctx.Value(util.UserID).(int)
+
+	if !ok || userID < 1 {
+		logger.GetLogger().Error("UserID unexpectedly not found in context")
+		return nil, ErrUserIDAbsent
+	}
+
+	result := make([]model.GetUserURLsResponseModel, 0)
+
+	urlIDs := fs.userUrls[userID]
+
+	for _, urlID := range urlIDs {
+		responseDto := model.GetUserURLsResponseModel{}
+		responseDto.ShortURL = urlID
+		responseDto.OriginalURL = fs.urlStorage[urlID].OriginalURL
+		result = append(result, responseDto)
+	}
+
+	return result, nil
 }
 
 func (fs *fileStorage) SaveUser(ctx context.Context) (int, error) {
-	panic("Method not implemented")
+	fs.lock.Lock()
+	defer fs.lock.Unlock()
+
+	fs.userID++
+	fs.userUrls[fs.userID] = make([]string, 0)
+	return fs.userID, nil
 }
