@@ -22,7 +22,7 @@ type fileStorage struct {
 }
 
 func NewFileStorage(config *config.Config) *fileStorage {
-	fileStorage := fileStorage{cfg: config}
+	fileStorage := fileStorage{cfg: config, userUrls: make(map[int][]string)}
 	urlStorage := make(map[string]model.URLModel)
 	file, err := os.OpenFile(fileStorage.cfg.URLStoragePath, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
@@ -43,7 +43,6 @@ func NewFileStorage(config *config.Config) *fileStorage {
 	}
 
 	fileStorage.urlStorage = urlStorage
-	fileStorage.userUrls = make(map[int][]string, 0)
 	return &fileStorage
 }
 
