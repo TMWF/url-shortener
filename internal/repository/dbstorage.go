@@ -138,6 +138,9 @@ func (dbs *dbStorageImpl) SaveBatchURL(ctx context.Context, urlBatch []model.URL
 	defer insertUrlsStatement.Close()
 
 	insertUsersUrlsStatement, err := tx.PrepareContext(ctx, "INSERT INTO urls_users (url_id, user_id) VALUES ($1, $2)")
+	if err != nil {
+		return nil, err
+	}
 	defer insertUrlsStatement.Close()
 
 	result := make([]string, 0, len(urlBatch))

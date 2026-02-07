@@ -10,7 +10,7 @@ import (
 )
 
 type memStorage struct {
-	userId     int
+	userID     int
 	urlStorage map[string]string
 	userUrls   map[int][]string
 	lock       sync.RWMutex
@@ -88,7 +88,7 @@ func (ms *memStorage) SaveUser(ctx context.Context) (int, error) {
 	ms.lock.Lock()
 	defer ms.lock.Unlock()
 
-	ms.userId++
-	ms.userUrls[ms.userId] = make([]string, 0)
-	return ms.userId, nil
+	ms.userID++
+	ms.userUrls[ms.userID] = make([]string, 0)
+	return ms.userID, nil
 }
