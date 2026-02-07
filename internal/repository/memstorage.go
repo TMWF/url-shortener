@@ -76,7 +76,7 @@ func (ms *memStorage) GetUsersURLs(ctx context.Context) ([]model.GetUserURLsResp
 
 	for _, urlID := range urlIDs {
 		responseDto := model.GetUserURLsResponseModel{}
-		responseDto.ShortUrl = urlID
+		responseDto.ShortURL = urlID
 		responseDto.OriginalURL = ms.urlStorage[urlID]
 		result = append(result, responseDto)
 	}

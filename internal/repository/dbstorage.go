@@ -196,7 +196,7 @@ func (dbs *dbStorageImpl) GetUsersURLs(ctx context.Context) ([]model.GetUserURLs
 
 	for rows.Next() {
 		var model model.GetUserURLsResponseModel
-		err = rows.Scan(&model.ShortUrl, &model.OriginalURL)
+		err = rows.Scan(&model.ShortURL, &model.OriginalURL)
 		if err != nil {
 			return nil, err
 		}
