@@ -3,7 +3,7 @@ package util
 import (
 	"time"
 
-	"github.com/daixiang0/gci/pkg/config"
+	"github.com/TMWF/url-shortener/internal/config"
 	"github.com/golang-jwt/jwt/v4"
 )
 
@@ -27,7 +27,7 @@ func (helper *defaultJWTHelper) BuildJWTString(userID int) (string, error) {
 		UserID: userID,
 	})
 
-	tokenString, err := token.SignedString([]byte(SECRET_KEY))
+	tokenString, err := token.SignedString([]byte(helper.config.SecretKey))
 	if err != nil {
 		return "", err
 	}
