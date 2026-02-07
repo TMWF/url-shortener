@@ -43,7 +43,7 @@ func NewFileStorage(config *config.Config) *fileStorage {
 	}
 
 	fileStorage.urlStorage = urlStorage
-	fileStorage.userUrls = make(map[int][]string)
+	fileStorage.userUrls = make(map[int][]string, 0)
 	return &fileStorage
 }
 
