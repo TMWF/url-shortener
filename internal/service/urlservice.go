@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/TMWF/url-shortener/internal/config"
 	"github.com/TMWF/url-shortener/internal/logger"
@@ -16,6 +17,8 @@ type URLService interface {
 	ShortenURLAPI(ctx context.Context, request *model.ShortenURLRequest) (*model.ShortenURLResponse, error)
 	ShortenURLBatch(ctx context.Context, request []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error)
 	GetOriginalURL(ctx context.Context, id string) (string, bool)
+	GetUserURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error)
+	SaveUser(ctx context.Context) (int, error)
 }
 
 type defaultURLService struct {
@@ -28,7 +31,10 @@ func NewURLService(storage repository.Storage, config *config.Config) *defaultUR
 }
 
 func (s *defaultURLService) ShortenURL(ctx context.Context, url string) (string, error) {
-	id, err := s.storage.SaveURL(ctx, url)
+	context, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	id, err := s.storage.SaveURL(context, url)
 	if err != nil && !errors.Is(err, repository.ErrConflict) {
 		logger.GetLogger().Error("Error occurred while saving URL",
 			zap.String("original error message", err.Error()),
@@ -40,7 +46,10 @@ func (s *defaultURLService) ShortenURL(ctx context.Context, url string) (string,
 }
 
 func (s *defaultURLService) ShortenURLAPI(ctx context.Context, request *model.ShortenURLRequest) (*model.ShortenURLResponse, error) {
-	id, err := s.storage.SaveURL(ctx, request.URL)
+	context, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	id, err := s.storage.SaveURL(context, request.URL)
 	if err != nil && !errors.Is(err, repository.ErrConflict) {
 		logger.GetLogger().Error("Error occured while getting shortened URL ",
 			zap.String("original error message", err.Error()),
@@ -51,7 +60,10 @@ func (s *defaultURLService) ShortenURLAPI(ctx context.Context, request *model.Sh
 }
 
 func (s *defaultURLService) ShortenURLBatch(ctx context.Context, request []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error) {
-	ids, err := s.storage.SaveBatchURL(ctx, request)
+	context, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	ids, err := s.storage.SaveBatchURL(context, request)
 	if err != nil {
 		logger.GetLogger().Error("Error occured while getting shortened URL ",
 			zap.String("original error message", err.Error()),
@@ -72,4 +84,12 @@ func (s *defaultURLService) ShortenURLBatch(ctx context.Context, request []model
 func (s *defaultURLService) GetOriginalURL(ctx context.Context, id string) (string, bool) {
 	url, found := s.storage.GetURL(ctx, id)
 	return url, found
+}
+
+func (s *defaultURLService) GetUserURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error) {
+	return s.storage.GetUsersURLs(ctx)
+}
+
+func (s *defaultURLService) SaveUser(ctx context.Context) (int, error) {
+	return s.storage.SaveUser(ctx)
 }

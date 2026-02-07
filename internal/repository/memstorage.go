@@ -4,12 +4,15 @@ import (
 	"context"
 	"sync"
 
+	"github.com/TMWF/url-shortener/internal/logger"
 	"github.com/TMWF/url-shortener/internal/model"
 	"github.com/TMWF/url-shortener/internal/util"
 )
 
 type memStorage struct {
+	userId     int
 	urlStorage map[string]string
+	userUrls   map[int][]string
 	lock       sync.RWMutex
 }
 
@@ -20,8 +23,17 @@ func newMemStorage() *memStorage {
 func (ms *memStorage) SaveURL(ctx context.Context, url string) (string, error) {
 	ms.lock.Lock()
 	defer ms.lock.Unlock()
+	userID, ok := ctx.Value(util.USER_ID).(int)
+
+	if !ok || userID < 1 {
+		logger.GetLogger().Error("UserID unexpectedly not found in context")
+
+		return "", ErrUserIDAbsent
+	}
+
 	id := util.RandomString(8, util.LatinCharSet)
 	ms.urlStorage[id] = url
+	ms.userUrls[userID] = append(ms.userUrls[userID], id)
 	return id, nil
 }
 
@@ -45,4 +57,38 @@ func (ms *memStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBatc
 	}
 
 	return result, nil
+}
+
+func (ms *memStorage) GetUsersURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error) {
+	ms.lock.RLock()
+	defer ms.lock.RUnlock()
+
+	userID, ok := ctx.Value(util.USER_ID).(int)
+
+	if !ok || userID < 1 {
+		logger.GetLogger().Error("UserID unexpectedly not found in context")
+		return nil, ErrUserIDAbsent
+	}
+
+	result := make([]model.GetUserURLsResponseModel, 0)
+
+	urlIDs := ms.userUrls[userID]
+
+	for _, urlID := range urlIDs {
+		responseDto := model.GetUserURLsResponseModel{}
+		responseDto.ShortUrl = urlID
+		responseDto.OriginalURL = ms.urlStorage[urlID]
+		result = append(result, responseDto)
+	}
+
+	return result, nil
+}
+
+func (ms *memStorage) SaveUser(ctx context.Context) (int, error) {
+	ms.lock.Lock()
+	defer ms.lock.Unlock()
+
+	ms.userId++
+	ms.userUrls[ms.userId] = make([]string, 0)
+	return ms.userId, nil
 }

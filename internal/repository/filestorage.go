@@ -111,3 +111,11 @@ func (fs *fileStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBat
 	}
 	return result, nil
 }
+
+func (fs *fileStorage) GetUsersURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error) {
+	panic("Method not implemented")
+}
+
+func (fs *fileStorage) SaveUser(ctx context.Context) (int, error) {
+	panic("Method not implemented")
+}

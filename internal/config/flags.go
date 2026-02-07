@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"time"
 
 	"github.com/TMWF/url-shortener/internal/config/db"
 	"github.com/TMWF/url-shortener/internal/logger"
@@ -15,6 +16,7 @@ type Config struct {
 	LogLevel       string `env:"LOG_LEVEL"`
 	URLStoragePath string `env:"FILE_STORAGE_PATH"`
 	db.PostgreSQLConfig
+	UserJWTConfig
 }
 
 func InitialiseConfigs() *Config {
@@ -24,12 +26,16 @@ func InitialiseConfigs() *Config {
 	var logLevel string
 	var urlStoragePath string
 	var databaseDSN string
+	var tokenExp int
+	var secretKey string
 
 	flag.StringVar(&serverHostFlag, "a", "localhost:8080", "address and port to run server")
 	flag.StringVar(&baseURLFlag, "b", "http://localhost:8080", "address and port to run server")
 	flag.StringVar(&logLevel, "c", "INFO", "logging level")
 	flag.StringVar(&urlStoragePath, "f", "", "File storage path for urls")
 	flag.StringVar(&databaseDSN, "d", "", "PostgreSQL DSN")
+	flag.IntVar(&tokenExp, "t", 3, "Token expiration in hours")
+	flag.StringVar(&secretKey, "s", "supersecretkey", "JWT secret key")
 	flag.Parse()
 
 	err := env.Parse(cfg)
@@ -58,6 +64,12 @@ func InitialiseConfigs() *Config {
 	if cfg.DatabaseDSN == "" {
 		cfg.DatabaseDSN = databaseDSN
 	}
+
+	if cfg.SecretKey == "" {
+		cfg.SecretKey = secretKey
+	}
+
+	cfg.TokenExp = 3 * time.Hour
 
 	return cfg
 }

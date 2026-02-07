@@ -10,6 +10,7 @@ import (
 	"github.com/TMWF/url-shortener/internal/middleware"
 	"github.com/TMWF/url-shortener/internal/repository"
 	"github.com/TMWF/url-shortener/internal/service"
+	"github.com/TMWF/url-shortener/internal/util"
 	"github.com/go-chi/chi/v5"
 )
 
@@ -29,11 +30,10 @@ func main() {
 }
 
 func createRouter(config *config.Config) http.Handler {
-
 	storage := repository.GetStorage(config)
-	// urlStorage := repository.GetStorage(config)
+	jwtHelper := util.NewJWTHelper(config)
 	urlService := service.NewURLService(storage, config)
-	urlHandler := handler.NewURLHandler(urlService)
+	urlHandler := handler.NewURLHandler(urlService, jwtHelper)
 
 	router := chi.NewRouter()
 	router.Use(middleware.RequestLoggerMiddleware(logger.GetLogger()))
@@ -41,6 +41,7 @@ func createRouter(config *config.Config) http.Handler {
 	router.Post(`/`, urlHandler.ShortenURL)
 	router.Post(`/api/shorten`, urlHandler.ShortenURLAPI)
 	router.Post(`/api/shorten/batch`, urlHandler.ShortenURLBatch)
+	router.Get(`/api/user/urls`, urlHandler.GetUserURLs)
 	router.Get(`/{id}`, urlHandler.GetOriginalURL)
 
 	if dbPinger, ok := storage.(repository.DBPinger); ok {
