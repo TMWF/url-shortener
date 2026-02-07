@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS urls_users; 
+DROP TABLE IF EXISTS urls_users CASCADE; 
