@@ -274,6 +274,8 @@ func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
 	w.WriteHeader(http.StatusOK)
 	w.Write(responseBody)
 }
