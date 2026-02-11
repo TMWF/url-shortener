@@ -1,10 +1,13 @@
 package main
 
 import (
+	"database/sql"
+	"errors"
 	"log"
 	"net/http"
 
 	"github.com/TMWF/url-shortener/internal/config"
+	"github.com/TMWF/url-shortener/internal/database"
 	"github.com/TMWF/url-shortener/internal/handler"
 	"github.com/TMWF/url-shortener/internal/logger"
 	"github.com/TMWF/url-shortener/internal/middleware"
@@ -12,6 +15,7 @@ import (
 	"github.com/TMWF/url-shortener/internal/service"
 	"github.com/TMWF/url-shortener/internal/util"
 	"github.com/go-chi/chi/v5"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -23,14 +27,29 @@ func main() {
 	}
 	defer logger.GetLogger().Sync()
 
-	router := createRouter(cfg)
+	db, err := database.GetDB(cfg.DatabaseDSN)
+	if err != nil && !errors.Is(err, database.ErrEmptyDSN) {
+		logger.GetLogger().Fatal("Error occured when creating DB connection")
+	}
+	if db != nil {
+		defer func() {
+			if err := db.Close(); err != nil {
+				logger.GetLogger().Error(
+					"Failed to properly close the db connection",
+					zap.String("original error message", err.Error()),
+				)
+			}
+		}()
+	}
+
+	router := createRouter(cfg, db)
 	logger.GetLogger().Info("Starting server on port " + cfg.ServerHost)
 
 	log.Fatal(http.ListenAndServe(cfg.ServerHost, router))
 }
 
-func createRouter(config *config.Config) http.Handler {
-	storage := repository.GetStorage(config)
+func createRouter(config *config.Config, db *sql.DB) http.Handler {
+	storage := repository.GetStorage(config, db)
 	jwtHelper := util.NewJWTHelper(config)
 	urlService := service.NewURLService(storage, config)
 	urlHandler := handler.NewURLHandler(urlService, jwtHelper)

@@ -87,7 +87,15 @@ func (s *defaultURLService) GetOriginalURL(ctx context.Context, id string) (stri
 }
 
 func (s *defaultURLService) GetUserURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error) {
-	return s.storage.GetUsersURLs(ctx)
+	response, err := s.storage.GetUsersURLs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	for idx := range response {
+		response[idx].ShortURL = s.config.BaseURL + "/" + response[idx].ShortURL
+	}
+	return response, nil
 }
 
 func (s *defaultURLService) SaveUser(ctx context.Context) (int, error) {

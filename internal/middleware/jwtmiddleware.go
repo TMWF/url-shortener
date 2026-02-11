@@ -16,7 +16,7 @@ import (
 func JwtTokenMiddleware(config *config.Config) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			jwtCookie, _ := r.Cookie("AuthToken")
+			jwtCookie, _ := r.Cookie(string(util.UserID))
 
 			if jwtCookie != nil {
 				token := jwtCookie.Value

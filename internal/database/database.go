@@ -2,16 +2,22 @@ package database
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 var dbConn *sql.DB
+var ErrEmptyDSN = errors.New("DSN string is empty")
 
 func GetDB(dsn string) (*sql.DB, error) {
 	if dbConn != nil {
 		return dbConn, nil
+	}
+
+	if dsn == "" {
+		return nil, ErrEmptyDSN
 	}
 
 	db, err := sql.Open("pgx", dsn)

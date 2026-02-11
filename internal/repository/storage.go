@@ -1,9 +1,9 @@
 package repository
 
 import (
+	"database/sql"
+
 	"github.com/TMWF/url-shortener/internal/config"
-	"github.com/TMWF/url-shortener/internal/database"
-	"github.com/TMWF/url-shortener/internal/logger"
 	"github.com/TMWF/url-shortener/migrations"
 )
 
@@ -12,12 +12,8 @@ type Storage interface {
 	UserStorage
 }
 
-func GetStorage(config *config.Config) Storage {
-	if config.DatabaseDSN != "" {
-		db, err := database.GetDB(config.DatabaseDSN)
-		if err != nil {
-			logger.GetLogger().Fatal("Error occured when creating DB connection")
-		}
+func GetStorage(config *config.Config, db *sql.DB) Storage {
+	if db != nil {
 		migrations.RunMigrations(db)
 		return newDBStorage(db)
 	}
