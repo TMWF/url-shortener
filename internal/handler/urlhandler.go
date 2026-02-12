@@ -249,7 +249,7 @@ func (h *urlHandler) getContextWithUserIDIfNeeded(ctx context.Context) (context.
 		if err != nil {
 			return nil, err
 		}
-		contextWithNeedToSetCookieProperty := context.WithValue(ctx, util.NeedToSetUserJWTCookie, "true")
+		contextWithNeedToSetCookieProperty := context.WithValue(ctx, util.NeedToSetUserJWTCookie, true)
 		return context.WithValue(contextWithNeedToSetCookieProperty, util.UserID, userID), nil
 	}
 	return ctx, nil
@@ -267,6 +267,7 @@ func requireUserIDFromContext(ctx context.Context) (int, error) {
 
 func (h *urlHandler) setUserJWTCookieIfNeeded(ctx context.Context, w http.ResponseWriter) error {
 	if _, ok := ctx.Value(util.NeedToSetUserJWTCookie).(bool); !ok {
+		logger.GetLogger().Debug("No need to set JWT Cookie")
 		return nil
 	}
 
@@ -285,6 +286,7 @@ func (h *urlHandler) setUserJWTCookieIfNeeded(ctx context.Context, w http.Respon
 
 	cookie := http.Cookie{Name: string(util.UserID), Value: jwtToken}
 	http.SetCookie(w, &cookie)
+	logger.GetLogger().Debug("Successfully set jwt cookie")
 
 	return nil
 }
