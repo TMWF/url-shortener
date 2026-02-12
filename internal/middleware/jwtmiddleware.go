@@ -31,6 +31,8 @@ func JwtTokenMiddleware(config *config.Config) func(next http.Handler) http.Hand
 					ctx := context.WithValue(r.Context(), util.UserID, userID)
 					r = r.WithContext(ctx)
 				}
+			} else {
+				logger.GetLogger().Debug("JWT cookie is absent in request")
 			}
 
 			next.ServeHTTP(w, r)
