@@ -24,10 +24,8 @@ func JwtTokenMiddleware(config *config.Config) func(next http.Handler) http.Hand
 					zap.String("Encrypted token", token),
 				)
 				userID := getUserID(token, config)
-				if userID > 0 {
-					ctx := context.WithValue(r.Context(), util.UserID, userID)
-					r = r.WithContext(ctx)
-				}
+				ctx := context.WithValue(r.Context(), util.UserID, userID)
+				r = r.WithContext(ctx)
 			}
 
 			next.ServeHTTP(w, r)
