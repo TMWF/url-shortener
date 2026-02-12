@@ -74,6 +74,7 @@ func (dbs *dbStorageImpl) SaveURL(ctx context.Context, url string) (string, erro
 
 	var urlID int
 	if rowsAffected == 0 {
+		logger.GetLogger().Debug("Database conflict detected")
 		row := tx.QueryRowContext(ctx, "SELECT id, short_url FROM urls WHERE original_url = $1 LIMIT 1", url)
 		var shortURLFromDB string
 
@@ -92,7 +93,7 @@ func (dbs *dbStorageImpl) SaveURL(ctx context.Context, url string) (string, erro
 		if err = tx.Commit(); err != nil {
 			return "", err
 		}
-
+		logger.GetLogger().Debug("Returning ErrConflict from dbStorage")
 		return shortURLFromDB, ErrConflict
 	}
 
@@ -112,7 +113,7 @@ func (dbs *dbStorageImpl) SaveURL(ctx context.Context, url string) (string, erro
 	if err = tx.Commit(); err != nil {
 		return "", err
 	}
-
+	logger.GetLogger().Debug("Successfully saved url in database without error", zap.String("url", url))
 	return id, nil
 }
 

@@ -61,22 +61,9 @@ func (h *urlHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Content-Length", strconv.Itoa(len(shortenedURL)))
 
-	userID, err := h.requireUserIDFromContext(context)
-	if err != nil {
-		http.Error(w, "Unexpectedly not found user ID in context", http.StatusInternalServerError)
-		return
+	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-
-	jwtToken, err := h.jwtHelper.BuildJWTString(userID)
-	if err != nil {
-		logger.GetLogger().Error("error occured while getting jwtToken",
-			zap.String("original error message", err.Error()),
-		)
-		http.Error(w, "Error occured while getting jwtToken", http.StatusInternalServerError)
-		return
-	}
-	cookie := http.Cookie{Name: string(util.UserID), Value: jwtToken}
-	http.SetCookie(w, &cookie)
 
 	if isConflictError {
 		w.WriteHeader(http.StatusConflict)
@@ -128,22 +115,9 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
 
-	userID, err := h.requireUserIDFromContext(context)
-	if err != nil {
-		http.Error(w, "Unexpectedly not found user ID in context", http.StatusInternalServerError)
-		return
+	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-
-	jwtToken, err := h.jwtHelper.BuildJWTString(userID)
-	if err != nil {
-		logger.GetLogger().Error("error occured while getting jwtToken",
-			zap.String("original error message", err.Error()),
-		)
-		http.Error(w, "Error occured while getting jwtToken", http.StatusInternalServerError)
-		return
-	}
-	cookie := http.Cookie{Name: string(util.UserID), Value: jwtToken}
-	http.SetCookie(w, &cookie)
 
 	if isConflictError {
 		w.WriteHeader(http.StatusConflict)
@@ -216,22 +190,9 @@ func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
 
-	userID, err := h.requireUserIDFromContext(context)
-	if err != nil {
-		http.Error(w, "Unexpectedly not found user ID in context", http.StatusInternalServerError)
-		return
+	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
-
-	jwtToken, err := h.jwtHelper.BuildJWTString(userID)
-	if err != nil {
-		logger.GetLogger().Error("error occured while getting jwtToken",
-			zap.String("original error message", err.Error()),
-		)
-		http.Error(w, "Error occured while getting jwtToken", http.StatusInternalServerError)
-		return
-	}
-	cookie := http.Cookie{Name: string(util.UserID), Value: jwtToken}
-	http.SetCookie(w, &cookie)
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write(responseBody)
@@ -288,12 +249,13 @@ func (h *urlHandler) getContextWithUserIDIfNeeded(ctx context.Context) (context.
 		if err != nil {
 			return nil, err
 		}
-		return context.WithValue(ctx, util.UserID, userID), nil
+		contextWithNeedToSetCookieProperty := context.WithValue(ctx, util.NeedToSetUserJWTCookie, "true")
+		return context.WithValue(contextWithNeedToSetCookieProperty, util.UserID, userID), nil
 	}
 	return ctx, nil
 }
 
-func (h *urlHandler) requireUserIDFromContext(ctx context.Context) (int, error) {
+func requireUserIDFromContext(ctx context.Context) (int, error) {
 	userID, ok := ctx.Value(util.UserID).(int)
 	if !ok {
 		logger.GetLogger().Error("UserID unexpectedly not found in context")
@@ -301,4 +263,28 @@ func (h *urlHandler) requireUserIDFromContext(ctx context.Context) (int, error) 
 	}
 
 	return userID, nil
+}
+
+func (h *urlHandler) setUserJWTCookieIfNeeded(ctx context.Context, w http.ResponseWriter) error {
+	if _, ok := ctx.Value(util.NeedToSetUserJWTCookie).(bool); !ok {
+		return nil
+	}
+
+	userID, err := requireUserIDFromContext(ctx)
+	if err != nil {
+		return errors.New("Unexpectedly not found user ID in context")
+	}
+
+	jwtToken, err := h.jwtHelper.BuildJWTString(userID)
+	if err != nil {
+		logger.GetLogger().Error("error occured while getting jwtToken",
+			zap.String("original error message", err.Error()),
+		)
+		return errors.New("Error occured while getting jwtToken")
+	}
+
+	cookie := http.Cookie{Name: string(util.UserID), Value: jwtToken}
+	http.SetCookie(w, &cookie)
+
+	return nil
 }

@@ -31,7 +31,7 @@ func InitialiseConfigs() *Config {
 
 	flag.StringVar(&serverHostFlag, "a", "localhost:8080", "address and port to run server")
 	flag.StringVar(&baseURLFlag, "b", "http://localhost:8080", "address and port to run server")
-	flag.StringVar(&logLevel, "c", "INFO", "logging level")
+	flag.StringVar(&logLevel, "c", "DEBUG", "logging level")
 	flag.StringVar(&urlStoragePath, "f", "", "File storage path for urls")
 	flag.StringVar(&databaseDSN, "d", "", "PostgreSQL DSN")
 	flag.IntVar(&tokenExp, "t", 3, "Token expiration in hours")
@@ -62,6 +62,7 @@ func InitialiseConfigs() *Config {
 	}
 
 	if cfg.DatabaseDSN == "" {
+		logger.GetLogger().Info("Setting database config")
 		cfg.DatabaseDSN = databaseDSN
 	}
 

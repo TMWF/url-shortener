@@ -39,6 +39,7 @@ func main() {
 					zap.String("original error message", err.Error()),
 				)
 			}
+			logger.GetLogger().Debug("Successfully closed sql/db")
 		}()
 	}
 
