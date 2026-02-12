@@ -18,6 +18,16 @@ type mockStorage struct {
 	mock.Mock
 }
 
+// GetUsersURLs implements [repository.Storage].
+func (m *mockStorage) GetUsersURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error) {
+	panic("unimplemented")
+}
+
+// SaveUser implements [repository.Storage].
+func (m *mockStorage) SaveUser(ctx context.Context) (int, error) {
+	panic("unimplemented")
+}
+
 // SaveURL implements repository.Storage.
 func (m *mockStorage) SaveURL(ctx context.Context, url string) (string, error) {
 	args := m.Called(ctx, url)

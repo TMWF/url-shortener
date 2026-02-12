@@ -14,13 +14,15 @@ import (
 )
 
 type fileStorage struct {
+	userID     int
+	userUrls   map[int][]string
 	urlStorage map[string]model.URLModel
 	lock       sync.RWMutex
 	cfg        *config.Config
 }
 
 func NewFileStorage(config *config.Config) *fileStorage {
-	fileStorage := fileStorage{cfg: config}
+	fileStorage := fileStorage{cfg: config, userUrls: make(map[int][]string)}
 	urlStorage := make(map[string]model.URLModel)
 	file, err := os.OpenFile(fileStorage.cfg.URLStoragePath, os.O_RDONLY|os.O_CREATE, 0666)
 	if err != nil {
@@ -110,4 +112,38 @@ func (fs *fileStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBat
 		return nil, err
 	}
 	return result, nil
+}
+
+func (fs *fileStorage) GetUsersURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error) {
+	fs.lock.RLock()
+	defer fs.lock.RUnlock()
+
+	userID, ok := ctx.Value(util.UserID).(int)
+
+	if !ok || userID < 1 {
+		logger.GetLogger().Error("UserID unexpectedly not found in context")
+		return nil, ErrUserIDAbsent
+	}
+
+	result := make([]model.GetUserURLsResponseModel, 0)
+
+	urlIDs := fs.userUrls[userID]
+
+	for _, urlID := range urlIDs {
+		responseDto := model.GetUserURLsResponseModel{}
+		responseDto.ShortURL = urlID
+		responseDto.OriginalURL = fs.urlStorage[urlID].OriginalURL
+		result = append(result, responseDto)
+	}
+
+	return result, nil
+}
+
+func (fs *fileStorage) SaveUser(ctx context.Context) (int, error) {
+	fs.lock.Lock()
+	defer fs.lock.Unlock()
+
+	fs.userID++
+	fs.userUrls[fs.userID] = make([]string, 0)
+	return fs.userID, nil
 }

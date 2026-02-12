@@ -2,4 +2,4 @@
 -- Откат создания таблицы урлов
 DROP INDEX IF EXISTS idx_urls_original_url_unique;
 DROP INDEX IF EXISTS idx_urls_short_url_unique;
-DROP TABLE IF EXISTS movies; 
+DROP TABLE IF EXISTS urls CASCADE; 
