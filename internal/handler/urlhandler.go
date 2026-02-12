@@ -101,7 +101,7 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 	var isConflictError = errors.Is(err, repository.ErrConflict)
 
 	if err != nil && !isConflictError {
-		logger.GetLogger().Error("Error occured while getting shortened url")
+		logger.GetLogger().Error("Error occured while getting shortened url", zap.Error(err))
 		http.Error(w, "Error occured while getting shortened url", http.StatusInternalServerError)
 		return
 	}
