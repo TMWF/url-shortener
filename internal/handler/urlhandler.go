@@ -272,7 +272,7 @@ func (h *urlHandler) setUserJWTCookieIfNeeded(ctx context.Context, w http.Respon
 
 	userID, err := requireUserIDFromContext(ctx)
 	if err != nil {
-		return errors.New("Unexpectedly not found user ID in context")
+		return errors.New("unexpectedly not found user ID in context")
 	}
 
 	jwtToken, err := h.jwtHelper.BuildJWTString(userID)
@@ -280,7 +280,7 @@ func (h *urlHandler) setUserJWTCookieIfNeeded(ctx context.Context, w http.Respon
 		logger.GetLogger().Error("error occured while getting jwtToken",
 			zap.String("original error message", err.Error()),
 		)
-		return errors.New("Error occured while getting jwtToken")
+		return errors.New("error occured while getting jwtToken")
 	}
 
 	cookie := http.Cookie{Name: string(util.UserID), Value: jwtToken}
