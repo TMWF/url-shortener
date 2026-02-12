@@ -178,7 +178,7 @@ func (dbs *dbStorageImpl) GetUsersURLs(ctx context.Context) ([]model.GetUserURLs
 	userID, ok := ctx.Value(util.UserID).(int)
 	logger.GetLogger().Debug("User ID is", zap.Int("userID", userID))
 
-	if !ok || userID < 1 {
+	if !ok || userID < 0 {
 		logger.GetLogger().Error("UserID unexpectedly not found in context")
 		return nil, ErrUserIDAbsent
 	}
