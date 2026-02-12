@@ -53,7 +53,7 @@ func getUserID(tokenString string, config *config.Config) (int, error) {
 
 	if !token.Valid {
 		logger.GetLogger().Error("Token is not valid")
-		return -1, errors.New("Token is not valid")
+		return -1, errors.New("token is not valid")
 	}
 
 	logger.GetLogger().Info("Token is valid")
