@@ -88,7 +88,7 @@ func (dbs *dbStorageImpl) SaveURL(ctx context.Context, url string) (string, erro
 		_, err := tx.ExecContext(ctx, "INSERT INTO urls_users (url_id, user_id) VALUES ($1, $2)", urlID, userID)
 		if err != nil {
 			logger.GetLogger().Debug("Error while inserting into urls_users")
-			return "", nil
+			return "", err
 		}
 
 		if err = tx.Commit(); err != nil {
