@@ -204,8 +204,14 @@ func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	context, cancel := context.WithTimeout(req.Context(), 5*time.Second)
-	defer cancel()
+	context, err := h.getContextWithUserIDIfNeeded(req.Context())
+	if err != nil {
+		logger.GetLogger().Error("error occured while trying to save user",
+			zap.String("original error message", err.Error()),
+		)
+		http.Error(w, "Error occured while trying to save user", http.StatusInternalServerError)
+		return
+	}
 	response, err := h.urlService.GetUserURLs(context)
 
 	if errors.Is(err, repository.ErrUserIDAbsent) {
@@ -220,6 +226,10 @@ func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 		)
 		http.Error(w, "Unexpected error: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	if len(response) == 0 {

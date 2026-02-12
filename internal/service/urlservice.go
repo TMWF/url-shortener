@@ -87,7 +87,10 @@ func (s *defaultURLService) GetOriginalURL(ctx context.Context, id string) (stri
 }
 
 func (s *defaultURLService) GetUserURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error) {
-	response, err := s.storage.GetUsersURLs(ctx)
+	context, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	response, err := s.storage.GetUsersURLs(context)
 	if err != nil {
 		return nil, err
 	}
