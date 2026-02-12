@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -23,9 +24,13 @@ func JwtTokenMiddleware(config *config.Config) func(next http.Handler) http.Hand
 				logger.GetLogger().Info("Got token from the cookie",
 					zap.String("Encrypted token", token),
 				)
-				userID := getUserID(token, config)
-				ctx := context.WithValue(r.Context(), util.UserID, userID)
-				r = r.WithContext(ctx)
+				userID, err := getUserID(token, config)
+				if err != nil {
+					logger.GetLogger().Error("Error occured while parsing jwtToken", zap.Error(err))
+				} else {
+					ctx := context.WithValue(r.Context(), util.UserID, userID)
+					r = r.WithContext(ctx)
+				}
 			}
 
 			next.ServeHTTP(w, r)
@@ -33,7 +38,7 @@ func JwtTokenMiddleware(config *config.Config) func(next http.Handler) http.Hand
 	}
 }
 
-func getUserID(tokenString string, config *config.Config) int {
+func getUserID(tokenString string, config *config.Config) (int, error) {
 	claims := &model.Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims,
 		func(t *jwt.Token) (interface{}, error) {
@@ -43,14 +48,14 @@ func getUserID(tokenString string, config *config.Config) int {
 			return []byte(config.SecretKey), nil
 		})
 	if err != nil {
-		return -1
+		return -1, err
 	}
 
 	if !token.Valid {
 		logger.GetLogger().Error("Token is not valid")
-		return -1
+		return -1, errors.New("Token is not valid")
 	}
 
 	logger.GetLogger().Info("Token is valid")
-	return claims.UserID
+	return claims.UserID, nil
 }
