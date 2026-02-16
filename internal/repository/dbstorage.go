@@ -250,7 +250,7 @@ func (dbs *dbStorageImpl) DeleteUserURLs(jobModels []model.DeleteUserURLsJobMode
 		FROM (VALUES 
     	` + strings.Join(values, ",") + `
 		) AS v(urlId, userId)
-		WHERE e.id = (SELECT id FROM urls u 
+		WHERE u1.id = (SELECT id FROM urls u 
 		JOIN urls_users uu 
 		ON u.id = uu.url_id 
 		WHERE u.short_url = v.urlId AND uu.user_id = v.userId);`
