@@ -63,10 +63,11 @@ func createRouter(config *config.Config, db *sql.DB) http.Handler {
 	router.Post(`/api/shorten`, urlHandler.ShortenURLAPI)
 	router.Post(`/api/shorten/batch`, urlHandler.ShortenURLBatch)
 	router.Get(`/api/user/urls`, urlHandler.GetUserURLs)
+	router.Delete(`/api/user/urls`, urlHandler.DeleteUserURLs)
 	router.Get(`/{id}`, urlHandler.GetOriginalURL)
 
-	if dbPinger, ok := storage.(repository.DBPinger); ok {
-		pingService := service.NewPingDBService(dbPinger)
+	if dbStorage, ok := storage.(repository.DBStorage); ok {
+		pingService := service.NewPingDBService(dbStorage)
 		pingHandler := handler.NewPingHandler(pingService)
 		router.Get(`/ping`, pingHandler.PingDB)
 	}

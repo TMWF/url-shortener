@@ -46,11 +46,14 @@ func NewFileStorage(config *config.Config) *fileStorage {
 	return &fileStorage
 }
 
-func (fs *fileStorage) GetURL(ctx context.Context, id string) (string, bool) {
+func (fs *fileStorage) GetURL(ctx context.Context, id string) (string, error) {
 	fs.lock.RLock()
 	defer fs.lock.RUnlock()
 	urlModel, found := fs.urlStorage[id]
-	return urlModel.OriginalURL, found
+	if !found {
+		return "", ErrUrlNotFound
+	}
+	return urlModel.OriginalURL, nil
 }
 
 func (fs *fileStorage) SaveURL(ctx context.Context, url string) (string, error) {

@@ -1,15 +1,47 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"testing"
 
+	"github.com/TMWF/url-shortener/internal/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 type mockDBPinger struct {
 	mock.Mock
+}
+
+// GetURL implements [repository.DBStorage].
+func (m *mockDBPinger) GetURL(ctx context.Context, id string) (string, error) {
+	panic("unimplemented")
+}
+
+// GetUsersURLs implements [repository.DBStorage].
+func (m *mockDBPinger) GetUsersURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error) {
+	panic("unimplemented")
+}
+
+// SaveBatchURL implements [repository.DBStorage].
+func (m *mockDBPinger) SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]string, error) {
+	panic("unimplemented")
+}
+
+// SaveURL implements [repository.DBStorage].
+func (m *mockDBPinger) SaveURL(ctx context.Context, url string) (string, error) {
+	panic("unimplemented")
+}
+
+// SaveUser implements [repository.DBStorage].
+func (m *mockDBPinger) SaveUser(ctx context.Context) (int, error) {
+	panic("unimplemented")
+}
+
+// DeleteUserURLs implements [repository.DBStorage].
+func (m *mockDBPinger) DeleteUserURLs([]model.DeleteUserURLsJobModel) error {
+	panic("unimplemented")
 }
 
 // PingDB implements repository.DBPinger.

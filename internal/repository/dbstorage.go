@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/TMWF/url-shortener/internal/logger"
 	"github.com/TMWF/url-shortener/internal/model"
@@ -12,18 +14,23 @@ import (
 )
 
 var ErrConflict = errors.New("url already exists")
+var ErrURLDeleted = errors.New("url was deleted")
+var ErrUrlNotFound = errors.New("original url not found in storage")
 var ErrUserIDAbsent = errors.New("UserID unexpectedly not found in context")
 
-type DBPinger interface {
+type DBStorage interface {
+	Storage
 	PingDB() error
+	DeleteUserURLs([]model.DeleteUserURLsJobModel) error
 }
 
 type dbStorageImpl struct {
-	db *sql.DB
+	db            *sql.DB
+	urlDeleteJobs chan model.DeleteUserURLsJobModel
 }
 
 func newDBStorage(db *sql.DB) *dbStorageImpl {
-	return &dbStorageImpl{db: db}
+	return &dbStorageImpl{db: db, urlDeleteJobs: make(chan model.DeleteUserURLsJobModel, 1024)}
 }
 
 func (dbs *dbStorageImpl) PingDB() error {
@@ -31,16 +38,21 @@ func (dbs *dbStorageImpl) PingDB() error {
 }
 
 // GetURL implements [Storage].
-func (dbs *dbStorageImpl) GetURL(ctx context.Context, id string) (string, bool) {
+func (dbs *dbStorageImpl) GetURL(ctx context.Context, id string) (string, error) {
 	var originalURL string
-	row := dbs.db.QueryRowContext(ctx, "SELECT original_url FROM urls WHERE short_url = $1 LIMIT 1", id)
-	if err := row.Scan(&originalURL); err != nil {
+	var isDeleted bool
+	row := dbs.db.QueryRowContext(ctx, "SELECT original_url, is_deleted FROM urls WHERE short_url = $1 LIMIT 1", id)
+	if err := row.Scan(&originalURL, &isDeleted); err != nil {
 		logger.GetLogger().Error("Error occured while getting data from database",
 			zap.String("original error message", err.Error()),
 		)
-		return "", false
+		return "", err
 	}
-	return originalURL, true
+
+	if isDeleted {
+		return "", ErrURLDeleted
+	}
+	return originalURL, nil
 }
 
 // SaveURL implements [Storage].
@@ -217,6 +229,35 @@ func (dbs *dbStorageImpl) GetUsersURLs(ctx context.Context) ([]model.GetUserURLs
 	}
 
 	return result, nil
+}
+
+func (dbs *dbStorageImpl) DeleteUserURLs(jobModels []model.DeleteUserURLsJobModel) error {
+	var values []string
+	var args []any
+	for i, jobModel := range jobModels {
+		userID := jobModel.UserID
+		for _, urlID := range jobModel.URLIDs {
+			base := i * 2
+			// PostgreSQL требует шаблоны в формате ($1, $2) для каждой вставки
+			params := fmt.Sprintf("($%d, $%d)", base+1, base+2)
+			values = append(values, params)
+			args = append(args, userID, urlID)
+		}
+	}
+
+	query := `UPDATE urls AS u1
+		SET u1.is_deleted = TRUE
+		FROM (VALUES 
+    	` + strings.Join(values, ",") + `
+		) AS v(urlId, userId)
+		WHERE e.id = (SELECT id FROM urls u 
+		JOIN urls_users uu 
+		ON u.id = uu.url_id 
+		WHERE u.short_url = v.urlId AND uu.user_id = v.userId);`
+
+	_, err := dbs.db.Exec(query, args...)
+
+	return err
 }
 
 func (dbs *dbStorageImpl) SaveUser(ctx context.Context) (int, error) {

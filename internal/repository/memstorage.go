@@ -37,11 +37,14 @@ func (ms *memStorage) SaveURL(ctx context.Context, url string) (string, error) {
 	return id, nil
 }
 
-func (ms *memStorage) GetURL(ctx context.Context, id string) (string, bool) {
+func (ms *memStorage) GetURL(ctx context.Context, id string) (string, error) {
 	ms.lock.RLock()
 	defer ms.lock.RUnlock()
 	url, found := ms.urlStorage[id]
-	return url, found
+	if !found {
+		return "", ErrUrlNotFound
+	}
+	return url, nil
 }
 
 func (ms *memStorage) SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]string, error) {

@@ -44,9 +44,9 @@ func (m *mockStorage) SaveBatchURL(ctx context.Context, request []model.URLBatch
 }
 
 // GetURL implements repository.Storage.
-func (m *mockStorage) GetURL(ctx context.Context, id string) (string, bool) {
+func (m *mockStorage) GetURL(ctx context.Context, id string) (string, error) {
 	args := m.Called(ctx, id)
-	return args.String(0), args.Bool(1)
+	return args.String(0), args.Error(1)
 }
 
 // --- Тесты ---

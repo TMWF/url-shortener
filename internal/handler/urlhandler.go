@@ -141,9 +141,21 @@ func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
 
 	context, cancel := context.WithTimeout(req.Context(), 5*time.Second)
 	defer cancel()
-	originalURL, found := h.urlService.GetOriginalURL(context, shortID)
-	if !found {
+
+	originalURL, err := h.urlService.GetOriginalURL(context, shortID)
+
+	if errors.Is(err, repository.ErrUrlNotFound) {
 		http.Error(w, "Short URL not found", http.StatusNotFound)
+		return
+	}
+
+	if errors.Is(err, repository.ErrURLDeleted) {
+		http.Error(w, err.Error(), http.StatusGone)
+		return
+	}
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -249,6 +261,38 @@ func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
 	w.WriteHeader(http.StatusOK)
 	w.Write(responseBody)
+}
+
+func (h *urlHandler) DeleteUserURLs(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodDelete {
+		http.Error(w, "Incorrect HTTP method, only DELETE methods allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	context, err := h.getContextWithUserIDIfNeeded(req.Context())
+	if err != nil {
+		logger.GetLogger().Error("error occured while trying to save user",
+			zap.String("original error message", err.Error()),
+		)
+		http.Error(w, "Error occured while trying to save user", http.StatusInternalServerError)
+		return
+	}
+
+	var reqBody = make([]string, 0)
+	dec := json.NewDecoder(req.Body)
+	if err := dec.Decode(&reqBody); err != nil {
+		logger.GetLogger().Error("Error occured while decoding request body")
+		http.Error(w, "Error occured while decoding request body", http.StatusBadRequest)
+		return
+	}
+
+	h.urlService.ScheduleUserURLsJob(context, reqBody)
+
+	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	w.WriteHeader(http.StatusAccepted)
 }
 
 func (h *urlHandler) getContextWithUserIDIfNeeded(ctx context.Context) (context.Context, error) {
