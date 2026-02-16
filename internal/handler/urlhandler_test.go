@@ -5,6 +5,8 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
+	"strings"
 
 	// "errors"
 	"io"
@@ -140,65 +142,65 @@ func TestGzipMiddlewareIntegration(t *testing.T) {
 	})
 }
 
-// func TestShortenURL(t *testing.T) {
-// 	tests := []struct {
-// 		name         string
-// 		method       string
-// 		body         string
-// 		mockReturn   string
-// 		mockError    error
-// 		expectedCode int
-// 		expectedBody string
-// 	}{
-// 		{
-// 			name:         "Success POST",
-// 			method:       http.MethodPost,
-// 			body:         "https://google.com",
-// 			mockReturn:   "http://localhost:8080/short",
-// 			mockError:    nil,
-// 			expectedCode: http.StatusCreated,
-// 			expectedBody: "http://localhost:8080/short",
-// 		},
-// 		{
-// 			name:         "Wrong Method GET",
-// 			method:       http.MethodGet,
-// 			body:         "",
-// 			expectedCode: http.StatusMethodNotAllowed,
-// 		},
-// 		{
-// 			name:         "Service Error",
-// 			method:       http.MethodPost,
-// 			body:         "https://google.com",
-// 			mockError:    errors.New("db error"),
-// 			expectedCode: http.StatusInternalServerError,
-// 		},
-// 	}
+func TestShortenURL(t *testing.T) {
+	tests := []struct {
+		name         string
+		method       string
+		body         string
+		mockReturn   string
+		mockError    error
+		expectedCode int
+		expectedBody string
+	}{
+		{
+			name:         "Success POST",
+			method:       http.MethodPost,
+			body:         "https://google.com",
+			mockReturn:   "http://localhost:8080/short",
+			mockError:    nil,
+			expectedCode: http.StatusCreated,
+			expectedBody: "http://localhost:8080/short",
+		},
+		{
+			name:         "Wrong Method GET",
+			method:       http.MethodGet,
+			body:         "",
+			expectedCode: http.StatusMethodNotAllowed,
+		},
+		{
+			name:         "Service Error",
+			method:       http.MethodPost,
+			body:         "https://google.com",
+			mockError:    errors.New("db error"),
+			expectedCode: http.StatusInternalServerError,
+		},
+	}
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			mockSvc := new(MockURLService)
-// 			if tt.method == http.MethodPost && tt.mockError == nil && tt.name != "Service Error" {
-// 				mockSvc.On("ShortenURL", tt.body).Return(tt.mockReturn, nil)
-// 			} else if tt.mockError != nil {
-// 				mockSvc.On("ShortenURL", tt.body).Return("", tt.mockError)
-// 			}
-// 			controller := gomock.NewController(t)
-// 			jwtBuilder := mocks.NewMockUserJWTBuilder(controller)
-// 			h := NewURLHandler(mockSvc, jwtBuilder)
-// 			context := context.WithValue(context.Background(), util.UserID, 1)
-// 			req := httptest.NewRequestWithContext(context, tt.method, "/", strings.NewReader(tt.body))
-// 			w := httptest.NewRecorder()
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mockSvc := new(MockURLService)
+			if tt.method == http.MethodPost && tt.mockError == nil && tt.name != "Service Error" {
+				mockSvc.On("ShortenURL", tt.body).Return(tt.mockReturn, nil)
+			} else if tt.mockError != nil {
+				mockSvc.On("ShortenURL", tt.body).Return("", tt.mockError)
+			}
+			controller := gomock.NewController(t)
+			jwtBuilder := mocks.NewMockUserJWTBuilder(controller)
+			h := NewURLHandler(mockSvc, jwtBuilder)
+			context := context.WithValue(context.Background(), util.UserID, 1)
+			req := httptest.NewRequestWithContext(context, tt.method, "/", strings.NewReader(tt.body))
+			w := httptest.NewRecorder()
 
-// 			h.ShortenURL(w, req)
+			h.ShortenURL(w, req)
 
-// 			assert.Equal(t, tt.expectedCode, w.Code)
-// 			if tt.expectedBody != "" {
-// 				assert.Equal(t, tt.expectedBody, w.Body.String())
-// 				assert.Equal(t, "text/plain", w.Header().Get("Content-Type"))
-// 			}
-// 		})
-// 	}
-// }
+			assert.Equal(t, tt.expectedCode, w.Code)
+			if tt.expectedBody != "" {
+				assert.Equal(t, tt.expectedBody, w.Body.String())
+				assert.Equal(t, "text/plain", w.Header().Get("Content-Type"))
+			}
+		})
+	}
+}
 
 // func TestShortenURLAPI(t *testing.T) {
 // 	mockSvc := new(MockURLService)
