@@ -6,23 +6,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"strings"
-
-	// "errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 
-	// "strings"
 	"testing"
-	// "time"
 
 	"github.com/TMWF/url-shortener/internal/middleware"
 	"github.com/TMWF/url-shortener/internal/mocks"
 	"github.com/TMWF/url-shortener/internal/model"
 	"github.com/TMWF/url-shortener/internal/util"
 
-	// "github.com/go-chi/chi/v5"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -202,38 +197,41 @@ func TestShortenURL(t *testing.T) {
 	}
 }
 
-// func TestShortenURLAPI(t *testing.T) {
-// 	mockSvc := new(MockURLService)
-// 	h := NewURLHandler(mockSvc)
-// 	t.Run("Success JSON API", func(t *testing.T) {
-// 		input := model.ShortenURLRequest{URL: "https://yandex.ru"}
-// 		output := &model.ShortenURLResponse{ShortenedURL: "http://localhost:8080/abc"}
+func TestShortenURLAPI(t *testing.T) {
+	controller := gomock.NewController(t)
+	jwtBuilder := mocks.NewMockUserJWTBuilder(controller)
+	mockSvc := new(MockURLService)
+	h := NewURLHandler(mockSvc, jwtBuilder)
+	t.Run("Success JSON API", func(t *testing.T) {
+		input := model.ShortenURLRequest{URL: "https://yandex.ru"}
+		output := &model.ShortenURLResponse{ShortenedURL: "http://localhost:8080/abc"}
 
-// 		mockSvc.On("ShortenURLAPI", &input).Return(output, nil)
+		mockSvc.On("ShortenURLAPI", &input).Return(output, nil)
 
-// 		jsonBody, _ := json.Marshal(input)
-// 		req := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewReader(jsonBody))
-// 		w := httptest.NewRecorder()
+		jsonBody, _ := json.Marshal(input)
+		context := context.WithValue(context.Background(), util.UserID, 1)
+		req := httptest.NewRequestWithContext(context, http.MethodPost, "/api/shorten", bytes.NewReader(jsonBody))
+		w := httptest.NewRecorder()
 
-// 		h.ShortenURLAPI(w, req)
+		h.ShortenURLAPI(w, req)
 
-// 		assert.Equal(t, http.StatusCreated, w.Code)
-// 		assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
+		assert.Equal(t, http.StatusCreated, w.Code)
+		assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
 
-// 		var actualRes model.ShortenURLResponse
-// 		json.NewDecoder(w.Body).Decode(&actualRes)
-// 		assert.Equal(t, output.ShortenedURL, actualRes.ShortenedURL)
-// 	})
+		var actualRes model.ShortenURLResponse
+		json.NewDecoder(w.Body).Decode(&actualRes)
+		assert.Equal(t, output.ShortenedURL, actualRes.ShortenedURL)
+	})
 
-// 	t.Run("Invalid JSON", func(t *testing.T) {
-// 		req := httptest.NewRequest(http.MethodPost, "/api/shorten", strings.NewReader(`{"url": "no-closing-brace`))
-// 		w := httptest.NewRecorder()
+	t.Run("Invalid JSON", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodPost, "/api/shorten", strings.NewReader(`{"url": "no-closing-brace`))
+		w := httptest.NewRecorder()
 
-// 		h.ShortenURLAPI(w, req)
+		h.ShortenURLAPI(w, req)
 
-// 		assert.Equal(t, http.StatusBadRequest, w.Code)
-// 	})
-// }
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+}
 
 // func TestGetOriginalURL(t *testing.T) {
 // 	mockSvc := new(MockURLService)
