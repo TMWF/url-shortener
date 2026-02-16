@@ -247,7 +247,7 @@ func (dbs *dbStorageImpl) DeleteUserURLs(jobModels []model.DeleteUserURLsJobMode
 	}
 
 	query := `UPDATE urls AS u1
-		SET u1.is_deleted = TRUE
+		SET is_deleted = TRUE
 		FROM (VALUES 
     	` + strings.Join(values, ",") + `
 		) AS v(urlId, userId)
