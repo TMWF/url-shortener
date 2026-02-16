@@ -144,7 +144,7 @@ func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
 
 	originalURL, err := h.urlService.GetOriginalURL(context, shortID)
 
-	if errors.Is(err, repository.ErrUrlNotFound) {
+	if errors.Is(err, repository.ErrURLNotFound) {
 		http.Error(w, "Short URL not found", http.StatusNotFound)
 		return
 	}

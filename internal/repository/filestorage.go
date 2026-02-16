@@ -51,7 +51,7 @@ func (fs *fileStorage) GetURL(ctx context.Context, id string) (string, error) {
 	defer fs.lock.RUnlock()
 	urlModel, found := fs.urlStorage[id]
 	if !found {
-		return "", ErrUrlNotFound
+		return "", ErrURLNotFound
 	}
 	return urlModel.OriginalURL, nil
 }

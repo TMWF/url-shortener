@@ -42,7 +42,7 @@ func (ms *memStorage) GetURL(ctx context.Context, id string) (string, error) {
 	defer ms.lock.RUnlock()
 	url, found := ms.urlStorage[id]
 	if !found {
-		return "", ErrUrlNotFound
+		return "", ErrURLNotFound
 	}
 	return url, nil
 }

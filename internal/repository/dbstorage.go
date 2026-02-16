@@ -15,7 +15,7 @@ import (
 
 var ErrConflict = errors.New("url already exists")
 var ErrURLDeleted = errors.New("url was deleted")
-var ErrUrlNotFound = errors.New("original url not found in storage")
+var ErrURLNotFound = errors.New("original url not found in storage")
 var ErrUserIDAbsent = errors.New("UserID unexpectedly not found in context")
 
 type DBStorage interface {
