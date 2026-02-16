@@ -246,7 +246,7 @@ func TestDefaultURLService_GetOriginalURL(t *testing.T) {
 		name            string
 		shortID         string
 		mockOriginalURL string
-		mockFoundStatus bool
+		mockFoundStatus error
 		expectedURL     string
 		expectedFound   bool
 	}{
@@ -254,7 +254,7 @@ func TestDefaultURLService_GetOriginalURL(t *testing.T) {
 			name:            "URL Found",
 			shortID:         "get_id_found",
 			mockOriginalURL: "http://get.original.com/found",
-			mockFoundStatus: true,
+			mockFoundStatus: nil,
 			expectedURL:     "http://get.original.com/found",
 			expectedFound:   true,
 		},
@@ -262,7 +262,7 @@ func TestDefaultURLService_GetOriginalURL(t *testing.T) {
 			name:            "URL Not Found",
 			shortID:         "get_id_not_found",
 			mockOriginalURL: "",
-			mockFoundStatus: false,
+			mockFoundStatus: repository.ErrURLNotFound,
 			expectedURL:     "",
 			expectedFound:   false,
 		},
