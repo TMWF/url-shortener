@@ -241,7 +241,7 @@ func (dbs *dbStorageImpl) DeleteUserURLs(jobModels []model.DeleteUserURLsJobMode
 			// PostgreSQL требует шаблоны в формате ($1, $2) для каждой вставки
 			params := fmt.Sprintf("($%d, $%d)", base+1, base+2)
 			values = append(values, params)
-			args = append(args, userID, urlID)
+			args = append(args, urlID, userID)
 			base += 2
 		}
 	}
