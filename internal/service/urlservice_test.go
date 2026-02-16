@@ -246,25 +246,25 @@ func TestDefaultURLService_GetOriginalURL(t *testing.T) {
 		name            string
 		shortID         string
 		mockOriginalURL string
-		mockFoundStatus error
+		mockError       error
 		expectedURL     string
-		expectedFound   bool
+		expectedError   error
 	}{
 		{
 			name:            "URL Found",
 			shortID:         "get_id_found",
 			mockOriginalURL: "http://get.original.com/found",
-			mockFoundStatus: nil,
+			mockError:       nil,
 			expectedURL:     "http://get.original.com/found",
-			expectedFound:   true,
+			expectedError:   nil,
 		},
 		{
 			name:            "URL Not Found",
 			shortID:         "get_id_not_found",
 			mockOriginalURL: "",
-			mockFoundStatus: repository.ErrURLNotFound,
+			mockError:       repository.ErrURLNotFound,
 			expectedURL:     "",
-			expectedFound:   false,
+			expectedError:   repository.ErrURLNotFound,
 		},
 	}
 
@@ -274,14 +274,14 @@ func TestDefaultURLService_GetOriginalURL(t *testing.T) {
 			cfg := &config.Config{BaseURL: "http://short.url"}
 			urlService := NewURLService(mockRepo, cfg)
 
-			mockRepo.On("GetURL", mock.Anything, tt.shortID).Return(tt.mockOriginalURL, tt.mockFoundStatus)
+			mockRepo.On("GetURL", mock.Anything, tt.shortID).Return(tt.mockOriginalURL, tt.mockError)
 
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			foundURL, found := urlService.GetOriginalURL(ctx, tt.shortID)
+			foundURL, err := urlService.GetOriginalURL(ctx, tt.shortID)
 
-			assert.Equal(t, tt.expectedFound, found, "Found status mismatch")
+			assert.Equal(t, tt.expectedError, err, "Found status mismatch")
 			assert.Equal(t, tt.expectedURL, foundURL, "Original URL mismatch")
 			mockRepo.AssertCalled(t, "GetURL", mock.Anything, tt.shortID)
 		})
