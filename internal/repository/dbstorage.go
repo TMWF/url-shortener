@@ -255,6 +255,7 @@ func (dbs *dbStorageImpl) DeleteUserURLs(jobModels []model.DeleteUserURLsJobMode
 		ON u.id = uu.url_id 
 		WHERE u.short_url = v.urlId AND uu.user_id = v.userId);`
 
+	logger.GetLogger().Debug("DELETE Query is: " + query)
 	_, err := dbs.db.Exec(query, args...)
 
 	return err

@@ -138,7 +138,7 @@ func (s *defaultURLService) urlDeletionWorker() {
 			}
 			err := dbStorage.DeleteUserURLs(jobs)
 			if err != nil {
-				logger.GetLogger().Debug("cannot save messages", zap.Error(err))
+				logger.GetLogger().Debug("cannot delete messages", zap.Error(err))
 				continue
 			}
 			jobs = nil
