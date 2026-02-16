@@ -16,7 +16,9 @@ import (
 	"github.com/TMWF/url-shortener/internal/middleware"
 	"github.com/TMWF/url-shortener/internal/mocks"
 	"github.com/TMWF/url-shortener/internal/model"
+	"github.com/TMWF/url-shortener/internal/repository"
 	"github.com/TMWF/url-shortener/internal/util"
+	"github.com/go-chi/chi/v5"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -233,45 +235,63 @@ func TestShortenURLAPI(t *testing.T) {
 	})
 }
 
-// func TestGetOriginalURL(t *testing.T) {
-// 	mockSvc := new(MockURLService)
-// 	h := NewURLHandler(mockSvc)
+func TestGetOriginalURL(t *testing.T) {
+	mockSvc := new(MockURLService)
+	controller := gomock.NewController(t)
+	jwtBuilder := mocks.NewMockUserJWTBuilder(controller)
+	h := NewURLHandler(mockSvc, jwtBuilder)
 
-// 	t.Run("Success Redirect", func(t *testing.T) {
-// 		id := "xyz123"
-// 		originalURL := "https://example.com"
-// 		mockSvc.On("GetOriginalURL", id).Return(originalURL, true)
+	t.Run("Success Redirect", func(t *testing.T) {
+		id := "xyz123"
+		originalURL := "https://example.com"
+		mockSvc.On("GetOriginalURL", id).Return(originalURL, nil)
 
-// 		req := httptest.NewRequest(http.MethodGet, "/"+id, nil)
+		req := httptest.NewRequest(http.MethodGet, "/"+id, nil)
 
-// 		rctx := chi.NewRouteContext()
-// 		rctx.URLParams.Add("id", id)
-// 		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("id", id)
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
-// 		w := httptest.NewRecorder()
+		w := httptest.NewRecorder()
 
-// 		h.GetOriginalURL(w, req)
+		h.GetOriginalURL(w, req)
 
-// 		assert.Equal(t, http.StatusTemporaryRedirect, w.Code)
-// 		assert.Equal(t, originalURL, w.Header().Get("Location"))
-// 	})
+		assert.Equal(t, http.StatusTemporaryRedirect, w.Code)
+		assert.Equal(t, originalURL, w.Header().Get("Location"))
+	})
 
-// 	t.Run("Not Found", func(t *testing.T) {
-// 		id := "nonexistent"
-// 		mockSvc.On("GetOriginalURL", id).Return("", false)
+	t.Run("Not Found", func(t *testing.T) {
+		id := "gone"
+		mockSvc.On("GetOriginalURL", id).Return("", repository.ErrURLNotFound)
 
-// 		req := httptest.NewRequest(http.MethodGet, "/"+id, nil)
-// 		rctx := chi.NewRouteContext()
-// 		rctx.URLParams.Add("id", id)
-// 		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+		req := httptest.NewRequest(http.MethodGet, "/"+id, nil)
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("id", id)
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
 
-// 		w := httptest.NewRecorder()
+		w := httptest.NewRecorder()
 
-// 		h.GetOriginalURL(w, req)
+		h.GetOriginalURL(w, req)
 
-// 		assert.Equal(t, http.StatusNotFound, w.Code)
-// 	})
-// }
+		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("Gone", func(t *testing.T) {
+		id := "nonexistent"
+		mockSvc.On("GetOriginalURL", id).Return("", repository.ErrURLDeleted)
+
+		req := httptest.NewRequest(http.MethodGet, "/"+id, nil)
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("id", id)
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		w := httptest.NewRecorder()
+
+		h.GetOriginalURL(w, req)
+
+		assert.Equal(t, http.StatusGone, w.Code)
+	})
+}
 
 // func TestShortenURLBatch(t *testing.T) {
 // 	tests := []struct {
