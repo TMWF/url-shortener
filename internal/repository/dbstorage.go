@@ -234,14 +234,15 @@ func (dbs *dbStorageImpl) GetUsersURLs(ctx context.Context) ([]model.GetUserURLs
 func (dbs *dbStorageImpl) DeleteUserURLs(jobModels []model.DeleteUserURLsJobModel) error {
 	var values []string
 	var args []any
-	for i, jobModel := range jobModels {
+	var base int
+	for _, jobModel := range jobModels {
 		userID := jobModel.UserID
 		for _, urlID := range jobModel.URLIDs {
-			base := i * 2
 			// PostgreSQL требует шаблоны в формате ($1, $2) для каждой вставки
 			params := fmt.Sprintf("($%d, $%d)", base+1, base+2)
 			values = append(values, params)
 			args = append(args, userID, urlID)
+			base += 2
 		}
 	}
 
