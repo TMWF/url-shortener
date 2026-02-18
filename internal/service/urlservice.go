@@ -100,9 +100,6 @@ func (s *defaultURLService) ScheduleUserURLsJob(ctx context.Context, urlIDs []st
 		return
 	}
 
-	// context, cancel := context.WithTimeout(ctx, 5*time.Second)
-	// defer cancel()
-
 	userID, ok := ctx.Value(util.UserID).(int)
 
 	if !ok || userID < 1 {
