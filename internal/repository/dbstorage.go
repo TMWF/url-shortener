@@ -84,24 +84,17 @@ func (dbs *dbStorageImpl) SaveURL(ctx context.Context, url string) (string, erro
 		return "", err
 	}
 
-	var urlID int
 	if rowsAffected == 0 {
 		logger.GetLogger().Debug("Database conflict detected")
-		row := tx.QueryRowContext(ctx, "SELECT id, short_url FROM urls WHERE original_url = $1 LIMIT 1", url)
+		row := tx.QueryRowContext(ctx, "SELECT short_url FROM urls WHERE original_url = $1 LIMIT 1", url)
 		var shortURLFromDB string
 
-		if err := row.Scan(&urlID, &shortURLFromDB); err != nil {
+		if err := row.Scan(&shortURLFromDB); err != nil {
 			logger.GetLogger().Error("Error occured while getting data from database",
 				zap.String("original error message", err.Error()),
 			)
 			return "", err
 		}
-
-		// _, err := tx.ExecContext(ctx, "INSERT INTO urls_users (url_id, user_id) VALUES ($1, $2)", urlID, userID)
-		// if err != nil {
-		// 	logger.GetLogger().Debug("Error while inserting into urls_users")
-		// 	return "", err
-		// }
 
 		if err = tx.Commit(); err != nil {
 			logger.GetLogger().Debug("Error while commiting transaction")
@@ -111,6 +104,7 @@ func (dbs *dbStorageImpl) SaveURL(ctx context.Context, url string) (string, erro
 		return shortURLFromDB, ErrConflict
 	}
 
+	var urlID int
 	row := tx.QueryRowContext(ctx, "SELECT id FROM urls WHERE original_url = $1 LIMIT 1", url)
 	if err := row.Scan(&urlID); err != nil {
 		logger.GetLogger().Error("Error occured while getting data from database",
