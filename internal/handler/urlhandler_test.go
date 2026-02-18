@@ -41,7 +41,7 @@ func (m *MockURLService) SaveUser(ctx context.Context) (int, error) {
 
 // ScheduleUserURLsJob implements [service.URLService].
 func (m *MockURLService) ScheduleUserURLsJob(ctx context.Context, urlIDs []string) {
-	panic("unimplemented")
+	m.Called(ctx, urlIDs)
 }
 
 // ShortenURLBatch implements [service.URLService].
@@ -51,17 +51,17 @@ func (m *MockURLService) ShortenURLBatch(ctx context.Context, request []model.UR
 }
 
 func (m *MockURLService) ShortenURL(ctx context.Context, url string) (string, error) {
-	args := m.Called(url)
+	args := m.Called(ctx, url)
 	return args.String(0), args.Error(1)
 }
 
 func (m *MockURLService) ShortenURLAPI(ctx context.Context, req *model.ShortenURLRequest) (*model.ShortenURLResponse, error) {
-	args := m.Called(req)
+	args := m.Called(ctx, req)
 	return args.Get(0).(*model.ShortenURLResponse), args.Error(1)
 }
 
 func (m *MockURLService) GetOriginalURL(ctx context.Context, id string) (string, error) {
-	args := m.Called(id)
+	args := m.Called(ctx, id)
 	return args.String(0), args.Error(1)
 }
 
@@ -97,7 +97,7 @@ func TestGzipMiddlewareIntegration(t *testing.T) {
 		input := model.ShortenURLRequest{URL: "https://google.com"}
 		output := &model.ShortenURLResponse{ShortenedURL: "http://localhost:8080/abc"}
 
-		mockSvc.On("ShortenURLAPI", &input).Return(output, nil).Once()
+		mockSvc.On("ShortenURLAPI", mock.Anything, &input).Return(output, nil).Once()
 		context := context.WithValue(context.Background(), util.UserID, 1)
 		body, _ := json.Marshal(input)
 		req := httptest.NewRequestWithContext(context, http.MethodPost, "/api/shorten", bytes.NewReader(body))
@@ -121,7 +121,7 @@ func TestGzipMiddlewareIntegration(t *testing.T) {
 		input := model.ShortenURLRequest{URL: "https://yandex.ru"}
 		output := model.ShortenURLResponse{ShortenedURL: "http://localhost:8080/def"}
 
-		mockSvc.On("ShortenURLAPI", &input).Return(&output, nil).Once()
+		mockSvc.On("ShortenURLAPI", mock.Anything, &input).Return(&output, nil).Once()
 
 		jsonBytes, _ := json.Marshal(input)
 		compressedBody := gzipData(t, jsonBytes)
@@ -177,9 +177,9 @@ func TestShortenURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockSvc := new(MockURLService)
 			if tt.method == http.MethodPost && tt.mockError == nil && tt.name != "Service Error" {
-				mockSvc.On("ShortenURL", tt.body).Return(tt.mockReturn, nil)
+				mockSvc.On("ShortenURL", mock.Anything, tt.body).Return(tt.mockReturn, nil)
 			} else if tt.mockError != nil {
-				mockSvc.On("ShortenURL", tt.body).Return("", tt.mockError)
+				mockSvc.On("ShortenURL", mock.Anything, tt.body).Return("", tt.mockError)
 			}
 			controller := gomock.NewController(t)
 			jwtBuilder := mocks.NewMockUserJWTBuilder(controller)
@@ -208,7 +208,7 @@ func TestShortenURLAPI(t *testing.T) {
 		input := model.ShortenURLRequest{URL: "https://yandex.ru"}
 		output := &model.ShortenURLResponse{ShortenedURL: "http://localhost:8080/abc"}
 
-		mockSvc.On("ShortenURLAPI", &input).Return(output, nil)
+		mockSvc.On("ShortenURLAPI", mock.Anything, &input).Return(output, nil)
 
 		jsonBody, _ := json.Marshal(input)
 		context := context.WithValue(context.Background(), util.UserID, 1)
@@ -244,7 +244,7 @@ func TestGetOriginalURL(t *testing.T) {
 	t.Run("Success Redirect", func(t *testing.T) {
 		id := "xyz123"
 		originalURL := "https://example.com"
-		mockSvc.On("GetOriginalURL", id).Return(originalURL, nil)
+		mockSvc.On("GetOriginalURL", mock.Anything, id).Return(originalURL, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/"+id, nil)
 
@@ -262,7 +262,7 @@ func TestGetOriginalURL(t *testing.T) {
 
 	t.Run("Not Found", func(t *testing.T) {
 		id := "nonexistent"
-		mockSvc.On("GetOriginalURL", id).Return("", repository.ErrURLNotFound)
+		mockSvc.On("GetOriginalURL", mock.Anything, id).Return("", repository.ErrURLNotFound)
 
 		req := httptest.NewRequest(http.MethodGet, "/"+id, nil)
 		rctx := chi.NewRouteContext()
@@ -278,7 +278,7 @@ func TestGetOriginalURL(t *testing.T) {
 
 	t.Run("Gone", func(t *testing.T) {
 		id := "gone"
-		mockSvc.On("GetOriginalURL", id).Return("", repository.ErrURLDeleted)
+		mockSvc.On("GetOriginalURL", mock.Anything, id).Return("", repository.ErrURLDeleted)
 
 		req := httptest.NewRequest(http.MethodGet, "/"+id, nil)
 		rctx := chi.NewRouteContext()
