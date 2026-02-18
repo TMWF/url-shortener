@@ -62,7 +62,7 @@ func InitialiseConfigs() *Config {
 	}
 
 	if cfg.DatabaseDSN == "" {
-		logger.GetLogger().Info("Setting database config")
+		logger.GetLogger().Debug("Setting database config")
 		cfg.DatabaseDSN = databaseDSN
 	}
 
