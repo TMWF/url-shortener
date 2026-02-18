@@ -31,12 +31,17 @@ type MockURLService struct {
 
 // GetUserURLs implements [service.URLService].
 func (m *MockURLService) GetUserURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error) {
-	panic("unimplemented")
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]model.GetUserURLsResponseModel), args.Error(1)
 }
 
 // SaveUser implements [service.URLService].
 func (m *MockURLService) SaveUser(ctx context.Context) (int, error) {
-	panic("unimplemented")
+	args := m.Called(ctx)
+	return args.Int(0), args.Error(1)
 }
 
 // ScheduleUserURLsJob implements [service.URLService].
@@ -47,6 +52,9 @@ func (m *MockURLService) ScheduleUserURLsJob(ctx context.Context, urlIDs []strin
 // ShortenURLBatch implements [service.URLService].
 func (m *MockURLService) ShortenURLBatch(ctx context.Context, request []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error) {
 	args := m.Called(ctx, request)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).([]model.URLBatchResponseDto), args.Error(1)
 }
 
