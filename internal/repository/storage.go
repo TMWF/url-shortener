@@ -1,34 +1,34 @@
 package repository
 
 import (
-	"context"
+	"database/sql"
 
 	"github.com/TMWF/url-shortener/internal/config"
-	"github.com/TMWF/url-shortener/internal/database"
 	"github.com/TMWF/url-shortener/internal/logger"
-	"github.com/TMWF/url-shortener/internal/model"
 	"github.com/TMWF/url-shortener/migrations"
+	"go.uber.org/zap"
 )
 
 type Storage interface {
-	SaveURL(ctx context.Context, url string) (string, error)
-	GetURL(ctx context.Context, id string) (string, bool)
-	SaveBatchURL(ctx context.Context, urlBatch []model.URLBatchRequestDto) ([]string, error)
+	URLStorage
+	UserStorage
 }
 
-func GetStorage(config *config.Config) Storage {
-	if config.DatabaseDSN != "" {
-		db, err := database.GetDB(config.DatabaseDSN)
-		if err != nil {
-			logger.GetLogger().Fatal("Error occured when creating DB connection")
+func GetStorage(config *config.Config, db *sql.DB) Storage {
+	if db != nil {
+		logger.GetLogger().Debug("Setting dbstorage")
+		if err := migrations.RunMigrations(db); err != nil {
+			logger.GetLogger().Fatal("Failed to run db migrations",
+				zap.String("original error message", err.Error()))
 		}
-		migrations.RunMigrations(db)
 		return newDBStorage(db)
 	}
 
 	if config.URLStoragePath != "" {
+		logger.GetLogger().Debug("Setting filestorage")
 		return NewFileStorage(config)
 	}
 
+	logger.GetLogger().Debug("Setting memstorage")
 	return newMemStorage()
 }

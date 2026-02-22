@@ -10,12 +10,17 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+
 	"testing"
-	"time"
 
 	"github.com/TMWF/url-shortener/internal/middleware"
+	"github.com/TMWF/url-shortener/internal/mocks"
 	"github.com/TMWF/url-shortener/internal/model"
+	"github.com/TMWF/url-shortener/internal/repository"
+	"github.com/TMWF/url-shortener/internal/util"
 	"github.com/go-chi/chi/v5"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
@@ -24,25 +29,48 @@ type MockURLService struct {
 	mock.Mock
 }
 
+// GetUserURLs implements [service.URLService].
+func (m *MockURLService) GetUserURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]model.GetUserURLsResponseModel), args.Error(1)
+}
+
+// SaveUser implements [service.URLService].
+func (m *MockURLService) SaveUser(ctx context.Context) (int, error) {
+	args := m.Called(ctx)
+	return args.Int(0), args.Error(1)
+}
+
+// ScheduleUserURLsJob implements [service.URLService].
+func (m *MockURLService) ScheduleUserURLsJob(ctx context.Context, urlIDs []string) {
+	m.Called(ctx, urlIDs)
+}
+
 // ShortenURLBatch implements [service.URLService].
 func (m *MockURLService) ShortenURLBatch(ctx context.Context, request []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error) {
 	args := m.Called(ctx, request)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).([]model.URLBatchResponseDto), args.Error(1)
 }
 
 func (m *MockURLService) ShortenURL(ctx context.Context, url string) (string, error) {
-	args := m.Called(url)
+	args := m.Called(ctx, url)
 	return args.String(0), args.Error(1)
 }
 
 func (m *MockURLService) ShortenURLAPI(ctx context.Context, req *model.ShortenURLRequest) (*model.ShortenURLResponse, error) {
-	args := m.Called(req)
+	args := m.Called(ctx, req)
 	return args.Get(0).(*model.ShortenURLResponse), args.Error(1)
 }
 
-func (m *MockURLService) GetOriginalURL(ctx context.Context, id string) (string, bool) {
-	args := m.Called(id)
-	return args.String(0), args.Bool(1)
+func (m *MockURLService) GetOriginalURL(ctx context.Context, id string) (string, error) {
+	args := m.Called(ctx, id)
+	return args.String(0), args.Error(1)
 }
 
 func gzipData(t *testing.T, data []byte) []byte {
@@ -66,8 +94,10 @@ func gunzipData(t *testing.T, data []byte) []byte {
 // --- Тесты ---
 
 func TestGzipMiddlewareIntegration(t *testing.T) {
+	controller := gomock.NewController(t)
+	mockJwtBuilder := mocks.NewMockUserJWTBuilder(controller)
 	mockSvc := new(MockURLService)
-	h := NewURLHandler(mockSvc)
+	h := NewURLHandler(mockSvc, mockJwtBuilder)
 
 	gzipHandler := middleware.GzipMiddleware()(http.HandlerFunc(h.ShortenURLAPI))
 
@@ -75,10 +105,10 @@ func TestGzipMiddlewareIntegration(t *testing.T) {
 		input := model.ShortenURLRequest{URL: "https://google.com"}
 		output := &model.ShortenURLResponse{ShortenedURL: "http://localhost:8080/abc"}
 
-		mockSvc.On("ShortenURLAPI", &input).Return(output, nil).Once()
-
+		mockSvc.On("ShortenURLAPI", mock.Anything, &input).Return(output, nil).Once()
+		context := context.WithValue(context.Background(), util.UserID, 1)
 		body, _ := json.Marshal(input)
-		req := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewReader(body))
+		req := httptest.NewRequestWithContext(context, http.MethodPost, "/api/shorten", bytes.NewReader(body))
 		req.Header.Set("Accept-Encoding", "gzip")
 		req.Header.Set("Content-Type", "application/json")
 
@@ -99,12 +129,13 @@ func TestGzipMiddlewareIntegration(t *testing.T) {
 		input := model.ShortenURLRequest{URL: "https://yandex.ru"}
 		output := model.ShortenURLResponse{ShortenedURL: "http://localhost:8080/def"}
 
-		mockSvc.On("ShortenURLAPI", &input).Return(&output, nil).Once()
+		mockSvc.On("ShortenURLAPI", mock.Anything, &input).Return(&output, nil).Once()
 
 		jsonBytes, _ := json.Marshal(input)
 		compressedBody := gzipData(t, jsonBytes)
 
-		req := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewReader(compressedBody))
+		context := context.WithValue(context.Background(), util.UserID, 1)
+		req := httptest.NewRequestWithContext(context, http.MethodPost, "/api/shorten", bytes.NewReader(compressedBody))
 		req.Header.Set("Content-Encoding", "gzip")
 		req.Header.Set("Content-Type", "application/json")
 
@@ -154,13 +185,15 @@ func TestShortenURL(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mockSvc := new(MockURLService)
 			if tt.method == http.MethodPost && tt.mockError == nil && tt.name != "Service Error" {
-				mockSvc.On("ShortenURL", tt.body).Return(tt.mockReturn, nil)
+				mockSvc.On("ShortenURL", mock.Anything, tt.body).Return(tt.mockReturn, nil)
 			} else if tt.mockError != nil {
-				mockSvc.On("ShortenURL", tt.body).Return("", tt.mockError)
+				mockSvc.On("ShortenURL", mock.Anything, tt.body).Return("", tt.mockError)
 			}
-
-			h := NewURLHandler(mockSvc)
-			req := httptest.NewRequest(tt.method, "/", strings.NewReader(tt.body))
+			controller := gomock.NewController(t)
+			jwtBuilder := mocks.NewMockUserJWTBuilder(controller)
+			h := NewURLHandler(mockSvc, jwtBuilder)
+			context := context.WithValue(context.Background(), util.UserID, 1)
+			req := httptest.NewRequestWithContext(context, tt.method, "/", strings.NewReader(tt.body))
 			w := httptest.NewRecorder()
 
 			h.ShortenURL(w, req)
@@ -175,16 +208,19 @@ func TestShortenURL(t *testing.T) {
 }
 
 func TestShortenURLAPI(t *testing.T) {
+	controller := gomock.NewController(t)
+	jwtBuilder := mocks.NewMockUserJWTBuilder(controller)
 	mockSvc := new(MockURLService)
-	h := NewURLHandler(mockSvc)
+	h := NewURLHandler(mockSvc, jwtBuilder)
 	t.Run("Success JSON API", func(t *testing.T) {
 		input := model.ShortenURLRequest{URL: "https://yandex.ru"}
 		output := &model.ShortenURLResponse{ShortenedURL: "http://localhost:8080/abc"}
 
-		mockSvc.On("ShortenURLAPI", &input).Return(output, nil)
+		mockSvc.On("ShortenURLAPI", mock.Anything, &input).Return(output, nil)
 
 		jsonBody, _ := json.Marshal(input)
-		req := httptest.NewRequest(http.MethodPost, "/api/shorten", bytes.NewReader(jsonBody))
+		context := context.WithValue(context.Background(), util.UserID, 1)
+		req := httptest.NewRequestWithContext(context, http.MethodPost, "/api/shorten", bytes.NewReader(jsonBody))
 		w := httptest.NewRecorder()
 
 		h.ShortenURLAPI(w, req)
@@ -209,12 +245,14 @@ func TestShortenURLAPI(t *testing.T) {
 
 func TestGetOriginalURL(t *testing.T) {
 	mockSvc := new(MockURLService)
-	h := NewURLHandler(mockSvc)
+	controller := gomock.NewController(t)
+	jwtBuilder := mocks.NewMockUserJWTBuilder(controller)
+	h := NewURLHandler(mockSvc, jwtBuilder)
 
 	t.Run("Success Redirect", func(t *testing.T) {
 		id := "xyz123"
 		originalURL := "https://example.com"
-		mockSvc.On("GetOriginalURL", id).Return(originalURL, true)
+		mockSvc.On("GetOriginalURL", mock.Anything, id).Return(originalURL, nil)
 
 		req := httptest.NewRequest(http.MethodGet, "/"+id, nil)
 
@@ -232,7 +270,7 @@ func TestGetOriginalURL(t *testing.T) {
 
 	t.Run("Not Found", func(t *testing.T) {
 		id := "nonexistent"
-		mockSvc.On("GetOriginalURL", id).Return("", false)
+		mockSvc.On("GetOriginalURL", mock.Anything, id).Return("", repository.ErrURLNotFound)
 
 		req := httptest.NewRequest(http.MethodGet, "/"+id, nil)
 		rctx := chi.NewRouteContext()
@@ -244,6 +282,22 @@ func TestGetOriginalURL(t *testing.T) {
 		h.GetOriginalURL(w, req)
 
 		assert.Equal(t, http.StatusNotFound, w.Code)
+	})
+
+	t.Run("Gone", func(t *testing.T) {
+		id := "gone"
+		mockSvc.On("GetOriginalURL", mock.Anything, id).Return("", repository.ErrURLDeleted)
+
+		req := httptest.NewRequest(http.MethodGet, "/"+id, nil)
+		rctx := chi.NewRouteContext()
+		rctx.URLParams.Add("id", id)
+		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+
+		w := httptest.NewRecorder()
+
+		h.GetOriginalURL(w, req)
+
+		assert.Equal(t, http.StatusGone, w.Code)
 	})
 }
 
@@ -344,13 +398,13 @@ func TestShortenURLBatch(t *testing.T) {
 				mockSvc.On("ShortenURLBatch", mock.Anything, tt.requestBody).Return(tt.mockServiceResponse, tt.mockServiceError)
 			}
 
+			controller := gomock.NewController(t)
+			jwtBuilder := mocks.NewMockUserJWTBuilder(controller)
 			w := httptest.NewRecorder()
-			h := NewURLHandler(mockSvc)
+			h := NewURLHandler(mockSvc, jwtBuilder)
 
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-			defer cancel()
-			req = req.WithContext(ctx)
-
+			context := context.WithValue(context.Background(), util.UserID, 1)
+			req = req.WithContext(context)
 			h.ShortenURLBatch(w, req)
 
 			// Проверки

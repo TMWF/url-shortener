@@ -18,6 +18,21 @@ type mockStorage struct {
 	mock.Mock
 }
 
+// GetUsersURLs implements [repository.Storage].
+func (m *mockStorage) GetUsersURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error) {
+	args := m.Called(ctx)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).([]model.GetUserURLsResponseModel), args.Error(1)
+}
+
+// SaveUser implements [repository.Storage].
+func (m *mockStorage) SaveUser(ctx context.Context) (int, error) {
+	args := m.Called(ctx)
+	return args.Int(0), args.Error(1)
+}
+
 // SaveURL implements repository.Storage.
 func (m *mockStorage) SaveURL(ctx context.Context, url string) (string, error) {
 	args := m.Called(ctx, url)
@@ -34,9 +49,9 @@ func (m *mockStorage) SaveBatchURL(ctx context.Context, request []model.URLBatch
 }
 
 // GetURL implements repository.Storage.
-func (m *mockStorage) GetURL(ctx context.Context, id string) (string, bool) {
+func (m *mockStorage) GetURL(ctx context.Context, id string) (string, error) {
 	args := m.Called(ctx, id)
-	return args.String(0), args.Bool(1)
+	return args.String(0), args.Error(1)
 }
 
 // --- Тесты ---
@@ -236,25 +251,25 @@ func TestDefaultURLService_GetOriginalURL(t *testing.T) {
 		name            string
 		shortID         string
 		mockOriginalURL string
-		mockFoundStatus bool
+		mockError       error
 		expectedURL     string
-		expectedFound   bool
+		expectedError   error
 	}{
 		{
 			name:            "URL Found",
 			shortID:         "get_id_found",
 			mockOriginalURL: "http://get.original.com/found",
-			mockFoundStatus: true,
+			mockError:       nil,
 			expectedURL:     "http://get.original.com/found",
-			expectedFound:   true,
+			expectedError:   nil,
 		},
 		{
 			name:            "URL Not Found",
 			shortID:         "get_id_not_found",
 			mockOriginalURL: "",
-			mockFoundStatus: false,
+			mockError:       repository.ErrURLNotFound,
 			expectedURL:     "",
-			expectedFound:   false,
+			expectedError:   repository.ErrURLNotFound,
 		},
 	}
 
@@ -264,14 +279,14 @@ func TestDefaultURLService_GetOriginalURL(t *testing.T) {
 			cfg := &config.Config{BaseURL: "http://short.url"}
 			urlService := NewURLService(mockRepo, cfg)
 
-			mockRepo.On("GetURL", mock.Anything, tt.shortID).Return(tt.mockOriginalURL, tt.mockFoundStatus)
+			mockRepo.On("GetURL", mock.Anything, tt.shortID).Return(tt.mockOriginalURL, tt.mockError)
 
 			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			defer cancel()
 
-			foundURL, found := urlService.GetOriginalURL(ctx, tt.shortID)
+			foundURL, err := urlService.GetOriginalURL(ctx, tt.shortID)
 
-			assert.Equal(t, tt.expectedFound, found, "Found status mismatch")
+			assert.Equal(t, tt.expectedError, err, "Found status mismatch")
 			assert.Equal(t, tt.expectedURL, foundURL, "Original URL mismatch")
 			mockRepo.AssertCalled(t, "GetURL", mock.Anything, tt.shortID)
 		})
