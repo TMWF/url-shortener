@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/TMWF/url-shortener/internal/audit"
 	"github.com/TMWF/url-shortener/internal/logger"
 	"github.com/TMWF/url-shortener/internal/model"
 	"github.com/TMWF/url-shortener/internal/repository"
@@ -20,8 +21,35 @@ import (
 )
 
 type urlHandler struct {
-	jwtHelper  util.UserJWTBuilder
-	urlService service.URLService
+	jwtHelper           util.UserJWTBuilder
+	urlService          service.URLService
+	auditEventObservers map[string]audit.RequestEventObserver
+}
+
+func (h *urlHandler) RegisterObserver(observer audit.RequestEventObserver) {
+	if h.auditEventObservers == nil {
+		h.auditEventObservers = make(map[string]audit.RequestEventObserver)
+	}
+
+	h.auditEventObservers[observer.GetID()] = observer
+}
+
+func (h *urlHandler) DeregisterObserver(observerID string) {
+	delete(h.auditEventObservers, observerID)
+}
+
+func (h *urlHandler) Notify(event *model.AuditEvent) {
+	for _, observer := range h.auditEventObservers {
+		go func() {
+			err := observer.SaveEvent(event)
+			if err != nil {
+				logger.GetLogger().Error(
+					"Error occured while handling audit event",
+					zap.Error(err),
+				)
+			}
+		}()
+	}
 }
 
 func NewURLHandler(service service.URLService, jwtHelper util.UserJWTBuilder) *urlHandler {
@@ -72,6 +100,25 @@ func (h *urlHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 	}
 
 	fmt.Fprint(w, shortenedURL)
+
+	if len(h.auditEventObservers) == 0 {
+		return
+	}
+
+	userID, err := requireUserIDFromContext(context)
+	if err != nil {
+		logger.GetLogger().Error("Error occured while trying to get user id from context")
+		return
+	}
+
+	auditEvent := &model.AuditEvent{
+		UnixTimeStamp: time.Now().Unix(),
+		Action:        model.Shorten,
+		UserID:        strconv.Itoa(userID),
+		URL:           bodyString,
+	}
+
+	go h.Notify(auditEvent)
 }
 
 func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
@@ -125,6 +172,25 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 	}
 	w.Write(responseBody)
+
+	if len(h.auditEventObservers) == 0 {
+		return
+	}
+
+	userID, err := requireUserIDFromContext(context)
+	if err != nil {
+		logger.GetLogger().Error("Error occured while trying to get user id from context")
+		return
+	}
+
+	auditEvent := &model.AuditEvent{
+		UnixTimeStamp: time.Now().Unix(),
+		Action:        model.Shorten,
+		UserID:        strconv.Itoa(userID),
+		URL:           reqBody.URL,
+	}
+
+	go h.Notify(auditEvent)
 }
 
 func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
@@ -161,6 +227,25 @@ func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
 
 	w.Header().Set("Location", originalURL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
+
+	if len(h.auditEventObservers) == 0 {
+		return
+	}
+
+	userID, err := requireUserIDFromContext(context)
+	if err != nil {
+		logger.GetLogger().Error("Error occured while trying to get user id from context")
+		return
+	}
+
+	auditEvent := &model.AuditEvent{
+		UnixTimeStamp: time.Now().Unix(),
+		Action:        model.Follow,
+		UserID:        strconv.Itoa(userID),
+		URL:           originalURL,
+	}
+
+	go h.Notify(auditEvent)
 }
 
 func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {

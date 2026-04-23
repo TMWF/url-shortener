@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/TMWF/url-shortener/internal/audit"
 	"github.com/TMWF/url-shortener/internal/config"
 	"github.com/TMWF/url-shortener/internal/database"
 	"github.com/TMWF/url-shortener/internal/handler"
@@ -54,6 +55,16 @@ func createRouter(config *config.Config, db *sql.DB) http.Handler {
 	jwtHelper := util.NewJWTHelper(config)
 	urlService := service.NewURLService(storage, config)
 	urlHandler := handler.NewURLHandler(urlService, jwtHelper)
+
+	if config.AuditFileStoragePath != "" {
+		localAuditeventHandler := audit.NewLocalAuditEventHandler(config.AuditFileStoragePath)
+		urlHandler.RegisterObserver(localAuditeventHandler)
+	}
+
+	if config.AuditURL != "" {
+		remoteAuditEventHandler := audit.NewRemoteAuditEventHandler(config.AuditURL)
+		urlHandler.RegisterObserver(remoteAuditEventHandler)
+	}
 
 	router := chi.NewRouter()
 	router.Use(middleware.JwtTokenMiddleware(config))

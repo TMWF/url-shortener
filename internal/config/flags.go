@@ -11,10 +11,12 @@ import (
 )
 
 type Config struct {
-	ServerHost     string `env:"SERVER_ADDRESS"`
-	BaseURL        string `env:"BASE_URL"`
-	LogLevel       string `env:"LOG_LEVEL"`
-	URLStoragePath string `env:"FILE_STORAGE_PATH"`
+	ServerHost           string `env:"SERVER_ADDRESS"`
+	BaseURL              string `env:"BASE_URL"`
+	LogLevel             string `env:"LOG_LEVEL"`
+	URLStoragePath       string `env:"FILE_STORAGE_PATH"`
+	AuditFileStoragePath string `env:"AUDIT_FILE"`
+	AuditURL             string `env:"AUDIT_URL"`
 	db.PostgreSQLConfig
 	UserJWTConfig
 }
@@ -28,12 +30,16 @@ func InitialiseConfigs() *Config {
 	var databaseDSN string
 	var tokenExp int
 	var secretKey string
+	var auditFilePath string
+	var auditURL string
 
 	flag.StringVar(&serverHostFlag, "a", "localhost:8080", "address and port to run server")
 	flag.StringVar(&baseURLFlag, "b", "http://localhost:8080", "address and port to run server")
 	flag.StringVar(&logLevel, "c", "DEBUG", "logging level")
 	flag.StringVar(&urlStoragePath, "f", "", "File storage path for urls")
 	flag.StringVar(&databaseDSN, "d", "", "PostgreSQL DSN")
+	flag.StringVar(&auditFilePath, "-audit-file", "", "Audit Event FileStorage Path")
+	flag.StringVar(&auditURL, "-audit-url", "", "Audit Event Server URL Path")
 	flag.IntVar(&tokenExp, "t", 3, "Token expiration in hours")
 	flag.StringVar(&secretKey, "s", "supersecretkey", "JWT secret key")
 	flag.Parse()
@@ -68,6 +74,14 @@ func InitialiseConfigs() *Config {
 
 	if cfg.SecretKey == "" {
 		cfg.SecretKey = secretKey
+	}
+
+	if cfg.AuditFileStoragePath == "" {
+		cfg.AuditFileStoragePath = auditFilePath
+	}
+
+	if cfg.AuditURL == "" {
+		cfg.AuditURL = auditURL
 	}
 
 	cfg.TokenExp = 3 * time.Hour
