@@ -383,7 +383,6 @@ func (h *urlHandler) DeleteUserURLs(w http.ResponseWriter, req *http.Request) {
 func (h *urlHandler) getContextWithUserIDIfNeeded(ctx context.Context) (context.Context, error) {
 	_, ok := ctx.Value(util.UserID).(int)
 	if !ok {
-		logger.GetLogger().Info("UserID not found in context")
 		userID, err := h.urlService.SaveUser(ctx)
 		if err != nil {
 			return nil, err
