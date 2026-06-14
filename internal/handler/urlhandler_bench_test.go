@@ -272,7 +272,10 @@ func BenchmarkShortenURLBatch(b *testing.B) {
 	const batchPayload = `[
 		{"correlation_id": "req-1", "original_url": "https://yandex.ru/maps"},
 		{"correlation_id": "req-2", "original_url": "https://google.com/search?q=golang"},
-		{"correlation_id": "req-3", "original_url": "https://github.com/golang/go"}
+		{"correlation_id": "req-3", "original_url": "https://github.com/golang/go"},
+		{"correlation_id": "req-4", "original_url": "https://random1.com/golang/go"},
+		{"correlation_id": "req-5", "original_url": "https://random2.com/golang/go"},
+		{"correlation_id": "req-6", "original_url": "https://random3.com/golang/go"}
 	]`
 
 	b.ReportAllocs()

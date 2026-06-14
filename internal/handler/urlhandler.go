@@ -159,14 +159,7 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	// if err != nil {
-	// 	logger.GetLogger().Error("Error occured while getting shortened url", zap.Error(err))
-	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
-	// 	return
-	// }
-
 	w.Header().Set("Content-Type", "application/json")
-	// w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
 
 	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -264,7 +257,7 @@ func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 	var reqBody = make([]model.URLBatchRequestDto, 0)
 	dec := json.NewDecoder(req.Body)
 	if err := dec.Decode(&reqBody); err != nil {
-		logger.GetLogger().Error("Error occured while decoding request body")
+		logger.GetLogger().Error("Error occured while decoding request body: " + err.Error())
 		http.Error(w, "Error occured while decoding request body", http.StatusBadRequest)
 		return
 	}
@@ -285,21 +278,25 @@ func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	responseBody, err := json.Marshal(response)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	// responseBody, err := json.Marshal(response)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
+	// w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
 
 	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write(responseBody)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		logger.GetLogger().Error(err.Error())
+		http.Error(w, "Error occured while writing response body", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
