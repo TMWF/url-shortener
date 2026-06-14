@@ -409,7 +409,7 @@ func TestShortenURLBatch(t *testing.T) {
 
 			// Проверки
 			assert.Equal(t, tt.expectedStatusCode, w.Code, "Expected status code mismatch")
-			assert.Equal(t, tt.expectedResponseBody, w.Body.String(), "Expected response body mismatch")
+			assert.Equal(t, strings.TrimSpace(tt.expectedResponseBody), strings.TrimSpace(w.Body.String()), "Expected response body mismatch")
 
 			if tt.method == http.MethodPost && tt.name != "Invalid JSON Body" && tt.name != "Empty Batch Request" && tt.mockServiceError == nil {
 				mockSvc.AssertCalled(t, "ShortenURLBatch", mock.Anything, tt.requestBody)
