@@ -160,6 +160,7 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 	}
 
 	if err != nil {
+		logger.GetLogger().Error("Error occured while getting shortened url", zap.Error(err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
