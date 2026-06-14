@@ -159,11 +159,11 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	if err != nil {
-		logger.GetLogger().Error("Error occured while getting shortened url", zap.Error(err))
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
+	// if err != nil {
+	// 	logger.GetLogger().Error("Error occured while getting shortened url", zap.Error(err))
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
 
 	w.Header().Set("Content-Type", "application/json")
 	// w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
