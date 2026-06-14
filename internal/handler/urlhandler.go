@@ -2,13 +2,14 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"time"
+
+	json "github.com/goccy/go-json"
 
 	"github.com/TMWF/url-shortener/internal/audit"
 	"github.com/TMWF/url-shortener/internal/logger"
@@ -127,11 +128,16 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	limitReader := io.LimitReader(req.Body, 4096)
+	bodyBytes, err := io.ReadAll(limitReader)
+	if err != nil {
+		http.Error(w, "Ошибка чтения запроса", http.StatusBadRequest)
+		return
+	}
+
 	var reqBody model.ShortenURLRequest
-	dec := json.NewDecoder(req.Body)
-	if err := dec.Decode(&reqBody); err != nil {
-		logger.GetLogger().Error("Error occured while decoding request body")
-		http.Error(w, "Error occured while decoding request body", http.StatusBadRequest)
+	if err := json.Unmarshal(bodyBytes, &reqBody); err != nil {
+		http.Error(w, "Некорректный JSON", http.StatusBadRequest)
 		return
 	}
 
@@ -153,14 +159,13 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	responseBody, err := json.Marshal(response)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
+	// w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
 
 	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -171,7 +176,8 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusCreated)
 	}
-	w.Write(responseBody)
+
+	json.NewEncoder(w).Encode(response)
 
 	if len(h.auditEventObservers) == 0 {
 		return
