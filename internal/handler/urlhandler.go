@@ -87,7 +87,7 @@ func (h *urlHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/plain")
-	// w.Header().Set("Content-Length", strconv.Itoa(len(shortenedURL)))
+	w.Header().Set("Content-Length", strconv.Itoa(len(shortenedURL)))
 
 	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
