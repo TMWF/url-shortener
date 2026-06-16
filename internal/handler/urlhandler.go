@@ -57,6 +57,31 @@ func NewURLHandler(service service.URLService, jwtHelper util.UserJWTBuilder) *u
 	return &urlHandler{urlService: service, jwtHelper: jwtHelper}
 }
 
+// ShortenURL обрабатывает HTTP-запрос на создание короткой ссылки.
+//
+// Метод принимает только POST-запросы. Тело запроса должно содержать исходный
+// URL в текстовом виде. При необходимости метод получает или создаёт идентификатор
+// пользователя в контексте запроса, после чего передаёт URL в сервис сокращения.
+//
+// В случае успешного создания новой короткой ссылки возвращает:
+//   - HTTP 201 Created;
+//   - Content-Type: text/plain;
+//   - тело ответа с сокращённым URL.
+//
+// Если переданный URL уже был сохранён ранее, возвращает:
+//   - HTTP 409 Conflict;
+//   - Content-Type: text/plain;
+//   - тело ответа с ранее созданным сокращённым URL.
+//
+// Возможные ошибки:
+//   - HTTP 405 Method Not Allowed, если метод запроса не POST;
+//   - HTTP 400 Bad Request, если не удалось прочитать тело запроса;
+//   - HTTP 500 Internal Server Error, если произошла ошибка при сохранении
+//     пользователя, создании короткой ссылки или установке JWT-cookie.
+//
+// Если в обработчике зарегистрированы наблюдатели аудита, после успешной
+// обработки запроса асинхронно отправляется событие аудита с информацией
+// о пользователе, действии и исходном URL.
 func (h *urlHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "Incorrect HTTP method, only POST methods allowed", http.StatusMethodNotAllowed)
@@ -122,6 +147,39 @@ func (h *urlHandler) ShortenURL(w http.ResponseWriter, req *http.Request) {
 	go h.Notify(auditEvent)
 }
 
+// ShortenURLAPI обрабатывает HTTP API-запрос на создание короткой ссылки.
+//
+// Метод принимает только POST-запросы с телом в формате JSON. Размер тела запроса
+// ограничивается 4096 байтами. Ожидается, что тело запроса соответствует структуре
+// model.ShortenURLRequest и содержит исходный URL для сокращения.
+//
+// При необходимости ShortenURLAPI получает или создаёт идентификатор пользователя
+// в контексте запроса, после чего передаёт данные в сервис сокращения URL.
+//
+// В случае успешного создания новой короткой ссылки метод возвращает:
+//   - HTTP 201 Created;
+//   - Content-Type: application/json;
+//   - JSON-ответ со сведениями о сокращённой ссылке.
+//
+// Если переданный URL уже был сохранён ранее, метод возвращает:
+//   - HTTP 409 Conflict;
+//   - Content-Type: application/json;
+//   - JSON-ответ с ранее созданной сокращённой ссылкой.
+//
+// Возможные ошибки:
+//   - HTTP 405 Method Not Allowed, если метод запроса не POST;
+//   - HTTP 400 Bad Request, если не удалось прочитать тело запроса;
+//   - HTTP 400 Bad Request, если тело запроса содержит некорректный JSON;
+//   - HTTP 500 Internal Server Error, если произошла ошибка при получении или
+//     сохранении пользователя;
+//   - HTTP 500 Internal Server Error, если произошла ошибка при создании
+//     сокращённой ссылки;
+//   - HTTP 500 Internal Server Error, если не удалось установить JWT-cookie
+//     пользователя.
+//
+// Если в обработчике зарегистрированы наблюдатели аудита, после успешной
+// обработки запроса асинхронно отправляется событие аудита с информацией
+// о пользователе, действии Shorten и исходном URL.
 func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "Incorrect HTTP method, only POST methods allowed", http.StatusMethodNotAllowed)
@@ -193,6 +251,30 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 	go h.Notify(auditEvent)
 }
 
+// GetOriginalURL обрабатывает HTTP-запрос на получение исходного URL
+// по идентификатору короткой ссылки.
+//
+// Метод принимает только GET-запросы. Идентификатор короткой ссылки извлекается
+// из URL-параметра "id". Если параметр отсутствует, метод возвращает ошибку.
+//
+// Для получения исходного URL создаётся контекст с таймаутом 5 секунд, после чего
+// запрос передаётся в сервис URL.
+//
+// В случае успешного получения исходного URL метод возвращает:
+//   - HTTP 307 Temporary Redirect;
+//   - заголовок Location со значением исходного URL.
+//
+// Возможные ошибки:
+//   - HTTP 405 Method Not Allowed, если метод запроса не GET;
+//   - HTTP 400 Bad Request, если URL-параметр "id" отсутствует;
+//   - HTTP 404 Not Found, если короткая ссылка не найдена;
+//   - HTTP 410 Gone, если короткая ссылка была удалена;
+//   - HTTP 500 Internal Server Error, если произошла ошибка при получении
+//     исходного URL.
+//
+// Если в обработчике зарегистрированы наблюдатели аудита, после успешного
+// получения исходного URL асинхронно отправляется событие аудита с информацией
+// о пользователе, действии Follow и исходном URL.
 func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet {
 		http.Error(w, "Incorrect HTTP method, only GET methods allowed", http.StatusMethodNotAllowed)
@@ -248,6 +330,32 @@ func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
 	go h.Notify(auditEvent)
 }
 
+// ShortenURLBatch обрабатывает HTTP API-запрос на пакетное создание коротких ссылок.
+//
+// Метод принимает только POST-запросы с телом в формате JSON. Ожидается, что тело
+// запроса содержит массив объектов model.URLBatchRequestDto с исходными URL и
+// корреляционными идентификаторами.
+//
+// При необходимости ShortenURLBatch получает или создаёт идентификатор пользователя
+// в контексте запроса, после чего передаёт список URL в сервис пакетного сокращения.
+//
+// В случае успешного создания коротких ссылок метод возвращает:
+//   - HTTP 201 Created;
+//   - Content-Type: application/json;
+//   - JSON-массив с результатами сокращения URL.
+//
+// Возможные ошибки:
+//   - HTTP 405 Method Not Allowed, если метод запроса не POST;
+//   - HTTP 400 Bad Request, если тело запроса не удалось декодировать;
+//   - HTTP 500 Internal Server Error, если произошла ошибка при получении или
+//     сохранении пользователя;
+//   - HTTP 500 Internal Server Error, если произошла ошибка при пакетном создании
+//     коротких ссылок;
+//   - HTTP 500 Internal Server Error, если не удалось установить JWT-cookie
+//     пользователя;
+//   - HTTP 500 Internal Server Error, если не удалось записать тело ответа.
+//
+// Метод устанавливает JWT-cookie пользователя при необходимости.
 func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
 		http.Error(w, "Incorrect HTTP method, only POST methods allowed", http.StatusMethodNotAllowed)
@@ -293,6 +401,34 @@ func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// GetUserURLs обрабатывает HTTP-запрос на получение списка URL,
+// сокращённых текущим пользователем.
+//
+// Метод принимает только GET-запросы. При необходимости GetUserURLs получает
+// или создаёт идентификатор пользователя в контексте запроса, после чего
+// запрашивает у сервиса список URL, связанных с этим пользователем.
+//
+// В случае успешного получения списка URL метод возвращает:
+//   - HTTP 200 OK;
+//   - Content-Type: application/json;
+//   - JSON-массив URL пользователя.
+//
+// Если для пользователя не найдено ни одной ссылки, метод возвращает:
+//   - HTTP 204 No Content.
+//
+// Возможные ошибки:
+//   - HTTP 405 Method Not Allowed, если метод запроса не GET;
+//   - HTTP 401 Unauthorized, если идентификатор пользователя отсутствует
+//     или пользователь не авторизован;
+//   - HTTP 500 Internal Server Error, если произошла ошибка при получении
+//     или сохранении пользователя;
+//   - HTTP 500 Internal Server Error, если произошла непредвиденная ошибка
+//     при получении списка URL пользователя;
+//   - HTTP 500 Internal Server Error, если не удалось установить JWT-cookie
+//     пользователя;
+//   - HTTP 500 Internal Server Error, если не удалось записать тело ответа.
+//
+// Метод устанавливает JWT-cookie пользователя при необходимости.
 func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet {
 		http.Error(w, "Incorrect HTTP method, only GET methods allowed", http.StatusMethodNotAllowed)
@@ -343,6 +479,29 @@ func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// DeleteUserURLs обрабатывает HTTP-запрос на асинхронное удаление URL пользователя.
+//
+// Метод принимает только DELETE-запросы с телом в формате JSON. Ожидается, что
+// тело запроса содержит массив строк с идентификаторами коротких URL, которые
+// необходимо удалить.
+//
+// При необходимости DeleteUserURLs получает или создаёт идентификатор пользователя
+// в контексте запроса, после чего передаёт список идентификаторов в сервис для
+// постановки задачи удаления в очередь.
+//
+// Удаление выполняется асинхронно, поэтому при успешной постановке задачи метод
+// возвращает:
+//   - HTTP 202 Accepted.
+//
+// Возможные ошибки:
+//   - HTTP 405 Method Not Allowed, если метод запроса не DELETE;
+//   - HTTP 500 Internal Server Error, если произошла ошибка при получении или
+//     сохранении пользователя;
+//   - HTTP 400 Bad Request, если тело запроса не удалось декодировать;
+//   - HTTP 500 Internal Server Error, если не удалось установить JWT-cookie
+//     пользователя.
+//
+// Метод устанавливает JWT-cookie пользователя при необходимости.
 func (h *urlHandler) DeleteUserURLs(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodDelete {
 		http.Error(w, "Incorrect HTTP method, only DELETE methods allowed", http.StatusMethodNotAllowed)
