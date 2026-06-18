@@ -393,19 +393,22 @@ func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	responseBody, err := json.Marshal(response)
+	if err != nil {
+		logger.GetLogger().Error(err.Error())
+		http.Error(w, "Error occured while encoding response body", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
 
 	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		logger.GetLogger().Error(err.Error())
-		http.Error(w, "Error occured while writing response body", http.StatusInternalServerError)
-		return
-	}
-
 	w.WriteHeader(http.StatusCreated)
+	w.Write(responseBody)
 }
 
 // GetUserURLs обрабатывает HTTP-запрос на получение списка URL,
@@ -476,14 +479,17 @@ func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	if err := json.NewEncoder(w).Encode(response); err != nil {
-		logger.GetLogger().Error(err.Error())
-		http.Error(w, "Error occured while writing response body", http.StatusInternalServerError)
+	responseBody, err := json.Marshal(response)
+	if err != nil {
+		logger.GetLogger().Error("Error occured while marshaling json")
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseBody)
 }
 
 // DeleteUserURLs обрабатывает HTTP-запрос на асинхронное удаление URL пользователя.
