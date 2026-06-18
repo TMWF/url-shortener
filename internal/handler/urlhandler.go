@@ -392,13 +392,13 @@ func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 
-	w.WriteHeader(http.StatusCreated)
-
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		logger.GetLogger().Error(err.Error())
 		http.Error(w, "Error occured while writing response body", http.StatusInternalServerError)
 		return
 	}
+
+	w.WriteHeader(http.StatusCreated)
 }
 
 // GetUserURLs обрабатывает HTTP-запрос на получение списка URL,
