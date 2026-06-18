@@ -217,7 +217,14 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	responseBody, err := json.Marshal(response)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
 
 	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -229,7 +236,7 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusCreated)
 	}
 
-	json.NewEncoder(w).Encode(response)
+	w.Write(responseBody)
 
 	if len(h.auditEventObservers) == 0 {
 		return
