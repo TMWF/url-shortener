@@ -1,6 +1,8 @@
-package audit
+package handler
 
-import "github.com/TMWF/url-shortener/internal/model"
+import (
+	"github.com/TMWF/url-shortener/internal/model"
+)
 
 type RequestEventPublisher interface {
 	RegisterObserver(RequestEventObserver)

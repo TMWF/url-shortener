@@ -11,7 +11,6 @@ import (
 
 	json "github.com/goccy/go-json"
 
-	"github.com/TMWF/url-shortener/internal/audit"
 	"github.com/TMWF/url-shortener/internal/logger"
 	"github.com/TMWF/url-shortener/internal/model"
 	"github.com/TMWF/url-shortener/internal/repository"
@@ -24,12 +23,14 @@ import (
 type urlHandler struct {
 	jwtHelper           util.UserJWTBuilder
 	urlService          service.URLService
-	auditEventObservers map[string]audit.RequestEventObserver
+	auditEventObservers map[string]RequestEventObserver
 }
 
-func (h *urlHandler) RegisterObserver(observer audit.RequestEventObserver) {
+var _ RequestEventPublisher = (*urlHandler)(nil)
+
+func (h *urlHandler) RegisterObserver(observer RequestEventObserver) {
 	if h.auditEventObservers == nil {
-		h.auditEventObservers = make(map[string]audit.RequestEventObserver)
+		h.auditEventObservers = make(map[string]RequestEventObserver)
 	}
 
 	h.auditEventObservers[observer.GetID()] = observer
@@ -294,14 +295,8 @@ func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	context, err := h.getContextWithUserIDIfNeeded(req.Context())
-	if err != nil {
-		logger.GetLogger().Error("error occured while trying to save user",
-			zap.String("original error message", err.Error()),
-		)
-		http.Error(w, "Error occured while trying to save user", http.StatusInternalServerError)
-		return
-	}
+	context, cancel := context.WithTimeout(req.Context(), 5*time.Second)
+	defer cancel()
 
 	originalURL, err := h.urlService.GetOriginalURL(context, shortID)
 
@@ -329,8 +324,7 @@ func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
 
 	userID, err := requireUserIDFromContext(context)
 	if err != nil {
-		logger.GetLogger().Error("Error occured while trying to get user id from context")
-		return
+		logger.GetLogger().Info("User Id in context is absent")
 	}
 
 	auditEvent := &model.AuditEvent{

@@ -1,4 +1,4 @@
-package audit
+package handler
 
 import "github.com/TMWF/url-shortener/internal/model"
 
