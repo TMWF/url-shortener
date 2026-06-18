@@ -3,12 +3,15 @@ package audit
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/TMWF/url-shortener/internal/model"
 )
+
+var ExternalServerError = errors.New("external server error")
 
 type RemoteAuditEventHandler struct {
 	auditServerURL string
@@ -44,6 +47,10 @@ func (h *RemoteAuditEventHandler) SaveEvent(event *model.AuditEvent) error {
 		return fmt.Errorf("failed to send audit to remote server: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return ExternalServerError
+	}
 
 	return nil
 }
