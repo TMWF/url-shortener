@@ -108,16 +108,13 @@ func BenchmarkShortenURL(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	// 2. Основной цикл бенчмарка
-	for i := 0; i < b.N; i++ {
-		// Создаем новое тело запроса для каждой итерации
+	for b.Loop() {
 		body := strings.NewReader(longURL)
 		req := httptest.NewRequest(http.MethodPost, "/api/shorten", body)
 		w := httptest.NewRecorder()
 
 		h.ShortenURL(w, req)
 
-		// Базовая валидация, чтобы убедиться, что хендлер вообще работает
 		resp := w.Result()
 		if resp.StatusCode != http.StatusCreated {
 			b.Fatalf("expected status 201, got %d", resp.StatusCode)
@@ -163,7 +160,6 @@ func BenchmarkShortenURL_Parallel(b *testing.B) {
 }
 
 func BenchmarkShortenURLAPI(b *testing.B) {
-	// Инициализация моков
 	mockSvc := &mockURLService{
 		ShortenURLAPIFunc: func(ctx context.Context, request *model.ShortenURLRequest) (*model.ShortenURLResponse, error) {
 			return &model.ShortenURLResponse{
@@ -185,11 +181,10 @@ func BenchmarkShortenURLAPI(b *testing.B) {
 
 	const jsonPayload = `{"url":"https://very-long-and-complicated-url-to-shorten-and-test-performance.com/path/to/resource?query=1"}`
 
-	b.ReportAllocs() // Включаем сбор метрик памяти
-	b.ResetTimer()   // Сбрасываем время, затраченное на инициализацию хендлеров и моков
+	b.ReportAllocs()
+	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
-		// strings.NewReader работает быстрее, чем bytes.NewBuffer
+	for b.Loop() {
 		body := strings.NewReader(jsonPayload)
 		req := httptest.NewRequest(http.MethodPost, "/api/shorten", body)
 		req.Header.Set("Content-Type", "application/json")
@@ -281,7 +276,7 @@ func BenchmarkShortenURLBatch(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		body := strings.NewReader(batchPayload)
 		req := httptest.NewRequest(http.MethodPost, "/api/shorten/batch", body)
 		req.Header.Set("Content-Type", "application/json")
@@ -374,7 +369,7 @@ func BenchmarkGetUserURLs(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		req := httptest.NewRequest(http.MethodGet, "/api/user/urls", nil)
 		w := httptest.NewRecorder()
 
