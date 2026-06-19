@@ -1,3 +1,4 @@
+// Package migrations contains sql scripts of database migrations and method for rinning these migrations
 package migrations
 
 import (
