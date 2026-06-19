@@ -10,12 +10,12 @@ import (
 )
 
 type localAuditEventhandler struct {
-	filePath string
-	mu       sync.Mutex
+	file *os.File
+	mu   sync.Mutex
 }
 
-func NewLocalAuditEventHandler(filePath string) *localAuditEventhandler {
-	return &localAuditEventhandler{filePath: filePath}
+func NewLocalAuditEventHandler(auditFile *os.File) *localAuditEventhandler {
+	return &localAuditEventhandler{file: auditFile}
 }
 
 func (h *localAuditEventhandler) GetID() string {
@@ -23,12 +23,6 @@ func (h *localAuditEventhandler) GetID() string {
 }
 
 func (h *localAuditEventhandler) SaveEvent(event *model.AuditEvent) error {
-	file, err := os.OpenFile(h.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("could not open audit file: %w", err)
-	}
-	defer file.Close()
-
 	data, err := json.Marshal(*event)
 	if err != nil {
 		return fmt.Errorf("audit marshal error: %w", err)
@@ -37,7 +31,7 @@ func (h *localAuditEventhandler) SaveEvent(event *model.AuditEvent) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	if _, err := file.Write(append(data, '\n')); err != nil {
+	if _, err := h.file.Write(append(data, '\n')); err != nil {
 		return fmt.Errorf("audit write error: %w", err)
 	}
 
