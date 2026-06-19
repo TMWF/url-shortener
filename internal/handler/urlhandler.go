@@ -24,6 +24,7 @@ type urlHandler struct {
 	jwtHelper           util.UserJWTBuilder
 	urlService          service.URLService
 	auditEventObservers map[string]RequestEventObserver
+	semaphore           util.Semaphore
 }
 
 var _ RequestEventPublisher = (*urlHandler)(nil)
@@ -43,6 +44,9 @@ func (h *urlHandler) DeregisterObserver(observerID string) {
 func (h *urlHandler) Notify(event *model.AuditEvent) {
 	for _, observer := range h.auditEventObservers {
 		go func() {
+			h.semaphore.Acquire()
+			defer h.semaphore.Release()
+
 			err := observer.SaveEvent(event)
 			if err != nil {
 				logger.GetLogger().Error(
@@ -55,7 +59,11 @@ func (h *urlHandler) Notify(event *model.AuditEvent) {
 }
 
 func NewURLHandler(service service.URLService, jwtHelper util.UserJWTBuilder) *urlHandler {
-	return &urlHandler{urlService: service, jwtHelper: jwtHelper}
+	return &urlHandler{
+		urlService: service,
+		jwtHelper:  jwtHelper,
+		semaphore:  *util.NewSemaphore(100),
+	}
 }
 
 // ShortenURL обрабатывает HTTP-запрос на создание короткой ссылки.
