@@ -1,0 +1,305 @@
+// Инструмент сканирует все пакеты, начиная с текущей директории, находит структуры,
+// помеченные комментарием `// generate:reset`, и создаёт для них методы сброса.
+// Результаты работы сохраняются в файлы `reset.gen.go` соответствующих пакетов.
+//
+// # Механизм запуска
+//
+// Для генерации методов Reset выполните из корня проекта:
+//
+//	go run ./cmd/reset
+//
+// После этого во всех пакетах, содержащих аннотированные структуры,
+// появится или обновится автогенерируемый файл `reset.gen.go`.
+package main
+
+import (
+	"bytes"
+	"fmt"
+	"go/ast"
+	"go/format"
+	"go/parser"
+	"go/printer"
+	"go/token"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+// StructInfo содержит информацию о структуре, для которой генерируется метод Reset.
+type StructInfo struct {
+	Name   string      // Имя структуры
+	Fields []FieldInfo // Список полей структуры
+}
+
+// FieldInfo содержит имя поля и его AST-представление типа.
+type FieldInfo struct {
+	Name string
+	Type ast.Expr
+}
+
+func main() {
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ошибка получения текущей директории: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Сканирование директории: %s\n", cwd)
+
+	err = filepath.WalkDir(cwd, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Пропускаем скрытые директории, вендор и саму директорию генератора
+		if d.IsDir() {
+			name := d.Name()
+			if strings.HasPrefix(name, ".") || name == "vendor" || name == "reset" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+
+		// Обрабатываем только директории, содержащие .go файлы (сканируем на уровне папок)
+		if filepath.Ext(path) == ".go" {
+			dirPath := filepath.Dir(path)
+			if err := processDirectory(dirPath); err != nil {
+				fmt.Fprintf(os.Stderr, "ошибка обработки директории %s: %v\n", dirPath, err)
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "ошибка обхода директорий: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Println("Генерация успешно завершена!")
+}
+
+// processDirectory парсит Go-файлы в указанной папке и создает reset.gen.go при необходимости.
+func processDirectory(dirPath string) error {
+	fset := token.NewFileSet()
+
+	// Парсим только файлы без суффиксов тестов и уже сгенерированных файлов
+	pkgs, err := parser.ParseDir(fset, dirPath, func(info fs.FileInfo) bool {
+		return !strings.HasSuffix(info.Name(), "_test.go") && info.Name() != "reset.gen.go"
+	}, parser.ParseComments)
+
+	if err != nil {
+		return err
+	}
+
+	for _, pkg := range pkgs {
+		var structsToReset []StructInfo
+
+		for _, file := range pkg.Files {
+			structsToReset = append(structsToReset, findResetableStructs(file)...)
+		}
+
+		if len(structsToReset) == 0 {
+			continue
+		}
+
+		genPath := filepath.Join(dirPath, "reset.gen.go")
+		if err := generateResetFile(genPath, pkg.Name, structsToReset); err != nil {
+			return fmt.Errorf("ошибка генерации для пакета %s: %w", pkg.Name, err)
+		}
+		fmt.Printf("Сгенерирован файл: %s\n", genPath)
+	}
+
+	return nil
+}
+
+// findResetableStructs ищет структуры, помеченные комментарием // generate:reset.
+func findResetableStructs(file *ast.File) []StructInfo {
+	var structs []StructInfo
+
+	for _, decl := range file.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok {
+			continue
+		}
+
+		hasDeclComment := hasResetComment(genDecl.Doc)
+
+		for _, spec := range genDecl.Specs {
+			typeSpec, ok := spec.(*ast.TypeSpec)
+			if !ok {
+				continue
+			}
+
+			structType, ok := typeSpec.Type.(*ast.StructType)
+			if !ok {
+				continue
+			}
+
+			hasSpecComment := hasResetComment(typeSpec.Doc)
+
+			if hasDeclComment || hasSpecComment {
+				structInfo := StructInfo{
+					Name: typeSpec.Name.Name,
+				}
+
+				if structType.Fields != nil {
+					for _, field := range structType.Fields.List {
+						if len(field.Names) == 0 {
+							embeddedName := getEmbeddedFieldName(field.Type)
+							if embeddedName != "" {
+								structInfo.Fields = append(structInfo.Fields, FieldInfo{
+									Name: embeddedName,
+									Type: field.Type,
+								})
+							}
+						} else {
+							for _, name := range field.Names {
+								structInfo.Fields = append(structInfo.Fields, FieldInfo{
+									Name: name.Name,
+									Type: field.Type,
+								})
+							}
+						}
+					}
+				}
+				structs = append(structs, structInfo)
+			}
+		}
+	}
+
+	return structs
+}
+
+// hasResetComment проверяет, содержит ли комментарий директиву generate:reset.
+func hasResetComment(cg *ast.CommentGroup) bool {
+	if cg == nil {
+		return false
+	}
+	for _, comment := range cg.List {
+		if strings.Contains(comment.Text, "generate:reset") {
+			return true
+		}
+	}
+	return false
+}
+
+// getEmbeddedFieldName возвращает имя для встраиваемого поля на основе его типа.
+func getEmbeddedFieldName(expr ast.Expr) string {
+	switch t := expr.(type) {
+	case *ast.Ident:
+		return t.Name
+	case *ast.StarExpr:
+		return getEmbeddedFieldName(t.X)
+	case *ast.SelectorExpr:
+		return t.Sel.Name
+	default:
+		return ""
+	}
+}
+
+// generateResetFile создает файл reset.gen.go с методами Reset().
+func generateResetFile(path string, pkgName string, structs []StructInfo) error {
+	var buf bytes.Buffer
+
+	buf.WriteString("// Code generated by cmd/reset. DO NOT EDIT.\n\n")
+	fmt.Fprintf(&buf, "package %s\n\n", pkgName)
+
+	for _, s := range structs {
+		fmt.Fprintf(&buf, "func (rs *%s) Reset() {\n", s.Name)
+		buf.WriteString("\tif rs == nil {\n\t\treturn\n\t}\n\n")
+
+		for _, f := range s.Fields {
+			stmt := getResetStmt(f.Name, f.Type)
+			lines := strings.Split(stmt, "\n")
+			for _, line := range lines {
+				if line != "" {
+					buf.WriteString("\t" + line + "\n")
+				}
+			}
+		}
+		buf.WriteString("}\n\n")
+	}
+
+	formatted, err := format.Source(buf.Bytes())
+	if err != nil {
+		return fmt.Errorf("ошибка форматирования кода: %w\nИсходный код:\n%s", err, buf.String())
+	}
+
+	return os.WriteFile(path, formatted, 0644)
+}
+
+// getResetStmt возвращает код очистки конкретного поля в зависимости от его типа.
+func getResetStmt(fieldName string, expr ast.Expr) string {
+	switch t := expr.(type) {
+	case *ast.ArrayType:
+		return fmt.Sprintf("rs.%s = rs.%s[:0]", fieldName, fieldName)
+
+	case *ast.MapType:
+		return fmt.Sprintf("clear(rs.%s)", fieldName)
+
+	case *ast.StarExpr:
+		underlyingStr := exprToString(t.X)
+		if isPrimitive(underlyingStr) {
+			return fmt.Sprintf("if rs.%s != nil {\n\t*rs.%s = %s\n}", fieldName, fieldName, getZeroValue(underlyingStr))
+		}
+		// Для структурных указателей: динамически проверяем наличие метода Reset() через interface-cast
+		return fmt.Sprintf("if rs.%s != nil {\n\tif resetter, ok := any(rs.%s).(interface{ Reset() }); ok {\n\t\tresetter.Reset()\n\t} else {\n\t\t*rs.%s = *new(%s)\n\t}\n}", fieldName, fieldName, fieldName, underlyingStr)
+
+	case *ast.Ident:
+		if isPrimitive(t.Name) {
+			return fmt.Sprintf("rs.%s = %s", fieldName, getZeroValue(t.Name))
+		}
+		// Для пользовательских вложенных структур: проверяем и вызываем Reset() через их указатель
+		return fmt.Sprintf("if resetter, ok := any(&rs.%s).(interface{ Reset() }); ok {\n\tresetter.Reset()\n} else {\n\trs.%s = *new(%s)\n}", fieldName, fieldName, t.Name)
+
+	case *ast.SelectorExpr:
+		typeName := exprToString(t)
+		return fmt.Sprintf("if resetter, ok := any(&rs.%s).(interface{ Reset() }); ok {\n\tresetter.Reset()\n} else {\n\trs.%s = *new(%s)\n}", fieldName, fieldName, typeName)
+
+	default:
+		typeName := exprToString(expr)
+		return fmt.Sprintf("rs.%s = *new(%s)", fieldName, typeName)
+	}
+}
+
+// exprToString переводит AST-выражение в строку.
+func exprToString(expr ast.Expr) string {
+	var buf bytes.Buffer
+	if err := printer.Fprint(&buf, token.NewFileSet(), expr); err != nil {
+		return ""
+	}
+	return buf.String()
+}
+
+// isPrimitive возвращает true, если передан встроенный базовый тип Go.
+func isPrimitive(name string) bool {
+	switch name {
+	case "int", "int8", "int16", "int32", "int64",
+		"uint", "uint8", "uint16", "uint32", "uint64", "uintptr",
+		"float32", "float64",
+		"complex64", "complex128",
+		"string", "bool", "byte", "rune":
+		return true
+	}
+	return false
+}
+
+// getZeroValue возвращает строковое представление нулевого значения для примитива.
+func getZeroValue(name string) string {
+	switch name {
+	case "bool":
+		return "false"
+	case "string":
+		return `""`
+	case "int", "int8", "int16", "int32", "int64",
+		"uint", "uint8", "uint16", "uint32", "uint64", "uintptr",
+		"byte", "rune":
+		return "0"
+	case "float32", "float64":
+		return "0.0"
+	case "complex64", "complex128":
+		return "0"
+	}
+	return "*new(" + name + ")"
+}
