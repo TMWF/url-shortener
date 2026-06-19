@@ -376,7 +376,7 @@ func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
 // Метод устанавливает JWT-cookie пользователя при необходимости.
 func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
-		http.Error(w, "Incorrect HTTP method, only POST methods allowed", http.StatusMethodNotAllowed)
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -384,7 +384,7 @@ func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 	dec := json.NewDecoder(req.Body)
 	if err := dec.Decode(&reqBody); err != nil {
 		logger.GetLogger().Error("Error occured while decoding request body: " + err.Error())
-		http.Error(w, "Error occured while decoding request body", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -393,21 +393,21 @@ func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 		logger.GetLogger().Error("error occured while trying to save user",
 			zap.String("original error message", err.Error()),
 		)
-		http.Error(w, "Error occured while trying to save user", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	response, err := h.urlService.ShortenURLBatch(context, reqBody)
 	if err != nil {
-		logger.GetLogger().Error("Error occured while getting shortened url")
-		http.Error(w, "Error occured while getting shortened url", http.StatusInternalServerError)
+		logger.GetLogger().Error(err.Error())
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	responseBody, err := json.Marshal(response)
 	if err != nil {
 		logger.GetLogger().Error(err.Error())
-		http.Error(w, "Error occured while encoding response body", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -452,7 +452,7 @@ func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 // Метод устанавливает JWT-cookie пользователя при необходимости.
 func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet {
-		http.Error(w, "Incorrect HTTP method, only GET methods allowed", http.StatusMethodNotAllowed)
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -461,14 +461,14 @@ func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 		logger.GetLogger().Error("error occured while trying to save user",
 			zap.String("original error message", err.Error()),
 		)
-		http.Error(w, "Error occured while trying to save user", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	response, err := h.urlService.GetUserURLs(context)
 
 	if errors.Is(err, repository.ErrUserIDAbsent) {
 		logger.GetLogger().Error("User unathorized")
-		http.Error(w, "User not authorized", http.StatusUnauthorized)
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
@@ -476,12 +476,12 @@ func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 		logger.GetLogger().Error("Unexpected error occured while fetching user urls",
 			zap.String("original error message", err.Error()),
 		)
-		http.Error(w, "Unexpected error: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
 	if len(response) == 0 {
@@ -492,8 +492,8 @@ func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 
 	responseBody, err := json.Marshal(response)
 	if err != nil {
-		logger.GetLogger().Error("Error occured while marshaling json")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logger.GetLogger().Error("Error occured while marshaling json", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -528,7 +528,7 @@ func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 // Метод устанавливает JWT-cookie пользователя при необходимости.
 func (h *urlHandler) DeleteUserURLs(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodDelete {
-		http.Error(w, "Incorrect HTTP method, only DELETE methods allowed", http.StatusMethodNotAllowed)
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -537,7 +537,7 @@ func (h *urlHandler) DeleteUserURLs(w http.ResponseWriter, req *http.Request) {
 		logger.GetLogger().Error("error occured while trying to save user",
 			zap.String("original error message", err.Error()),
 		)
-		http.Error(w, "Error occured while trying to save user", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -545,14 +545,14 @@ func (h *urlHandler) DeleteUserURLs(w http.ResponseWriter, req *http.Request) {
 	dec := json.NewDecoder(req.Body)
 	if err := dec.Decode(&reqBody); err != nil {
 		logger.GetLogger().Error("Error occured while decoding request body")
-		http.Error(w, "Error occured while decoding request body", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	h.urlService.ScheduleUserURLsJob(context, reqBody)
 
 	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
 	w.WriteHeader(http.StatusAccepted)
