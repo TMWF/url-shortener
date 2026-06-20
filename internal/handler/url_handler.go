@@ -24,7 +24,7 @@ type urlHandler struct {
 	jwtHelper           util.UserJWTBuilder
 	urlService          service.URLService
 	auditEventObservers map[string]RequestEventObserver
-	semaphore           util.Semaphore
+	observerSemaphores  map[string]chan struct{}
 }
 
 var _ RequestEventPublisher = (*urlHandler)(nil)
@@ -32,9 +32,11 @@ var _ RequestEventPublisher = (*urlHandler)(nil)
 func (h *urlHandler) RegisterObserver(observer RequestEventObserver) {
 	if h.auditEventObservers == nil {
 		h.auditEventObservers = make(map[string]RequestEventObserver)
+		h.observerSemaphores = make(map[string]chan struct{})
 	}
 
 	h.auditEventObservers[observer.GetID()] = observer
+	h.observerSemaphores[observer.GetID()] = make(chan struct{}, 100)
 }
 
 func (h *urlHandler) DeregisterObserver(observerID string) {
@@ -42,27 +44,66 @@ func (h *urlHandler) DeregisterObserver(observerID string) {
 }
 
 func (h *urlHandler) Notify(event *model.AuditEvent) {
-	for _, observer := range h.auditEventObservers {
-		go func() {
-			h.semaphore.Acquire()
-			defer h.semaphore.Release()
 
-			err := observer.SaveEvent(event)
-			if err != nil {
-				logger.GetLogger().Error(
-					"Error occured while handling audit event",
-					zap.Error(err),
-				)
-			}
-		}()
+	for name, observer := range h.auditEventObservers {
+		sem, exists := h.observerSemaphores[name]
+		if !exists {
+			continue
+		}
+
+		obsName := name
+		obs := observer
+
+		select {
+		case sem <- struct{}{}:
+			go func() {
+				defer func() {
+					<-sem
+				}()
+
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+
+				if err := obs.SaveEvent(ctx, event); err != nil {
+					logger.GetLogger().Error("Observer failed to process event",
+						zap.String("observer", obsName),
+						zap.Error(err),
+					)
+				}
+			}()
+
+		default:
+			// Семафор забит (канал полон) -> Событие отбрасывается
+			logger.GetLogger().Warn("Audit event dropped: observer buffer is full (slow consumer)",
+				zap.String("observer", obsName),
+				zap.Int64("event_timestamp", event.UnixTimeStamp),
+				zap.String("user_id", event.UserID),
+			)
+		}
 	}
 }
+
+// func (h *urlHandler) Notify(event *model.AuditEvent) {
+// 	for _, observer := range h.auditEventObservers {
+// 		go func() {
+// 			h.semaphore.Acquire()
+// 			defer h.semaphore.Release()
+
+// 			err := observer.SaveEvent(event)
+// 			if err != nil {
+// 				logger.GetLogger().Error(
+// 					"Error occured while handling audit event",
+// 					zap.Error(err),
+// 				)
+// 			}
+// 		}()
+// 	}
+// }
 
 func NewURLHandler(service service.URLService, jwtHelper util.UserJWTBuilder) *urlHandler {
 	return &urlHandler{
 		urlService: service,
 		jwtHelper:  jwtHelper,
-		semaphore:  *util.NewSemaphore(100),
 	}
 }
 
@@ -228,7 +269,8 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 
 	responseBody, err := json.Marshal(response)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logger.GetLogger().Error(err.Error())
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -236,7 +278,9 @@ func (h *urlHandler) ShortenURLAPI(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
 
 	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logger.GetLogger().Error(err.Error())
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
 	}
 
 	if isConflictError {
@@ -373,7 +417,7 @@ func (h *urlHandler) GetOriginalURL(w http.ResponseWriter, req *http.Request) {
 // Метод устанавливает JWT-cookie пользователя при необходимости.
 func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodPost {
-		http.Error(w, "Incorrect HTTP method, only POST methods allowed", http.StatusMethodNotAllowed)
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -381,7 +425,7 @@ func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 	dec := json.NewDecoder(req.Body)
 	if err := dec.Decode(&reqBody); err != nil {
 		logger.GetLogger().Error("Error occured while decoding request body: " + err.Error())
-		http.Error(w, "Error occured while decoding request body", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
@@ -390,21 +434,21 @@ func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 		logger.GetLogger().Error("error occured while trying to save user",
 			zap.String("original error message", err.Error()),
 		)
-		http.Error(w, "Error occured while trying to save user", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	response, err := h.urlService.ShortenURLBatch(context, reqBody)
 	if err != nil {
-		logger.GetLogger().Error("Error occured while getting shortened url")
-		http.Error(w, "Error occured while getting shortened url", http.StatusInternalServerError)
+		logger.GetLogger().Error(err.Error())
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	responseBody, err := json.Marshal(response)
 	if err != nil {
 		logger.GetLogger().Error(err.Error())
-		http.Error(w, "Error occured while encoding response body", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -449,7 +493,7 @@ func (h *urlHandler) ShortenURLBatch(w http.ResponseWriter, req *http.Request) {
 // Метод устанавливает JWT-cookie пользователя при необходимости.
 func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodGet {
-		http.Error(w, "Incorrect HTTP method, only GET methods allowed", http.StatusMethodNotAllowed)
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -458,14 +502,14 @@ func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 		logger.GetLogger().Error("error occured while trying to save user",
 			zap.String("original error message", err.Error()),
 		)
-		http.Error(w, "Error occured while trying to save user", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 	response, err := h.urlService.GetUserURLs(context)
 
 	if errors.Is(err, repository.ErrUserIDAbsent) {
 		logger.GetLogger().Error("User unathorized")
-		http.Error(w, "User not authorized", http.StatusUnauthorized)
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return
 	}
 
@@ -473,12 +517,12 @@ func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 		logger.GetLogger().Error("Unexpected error occured while fetching user urls",
 			zap.String("original error message", err.Error()),
 		)
-		http.Error(w, "Unexpected error: "+err.Error(), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
 	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
 	if len(response) == 0 {
@@ -489,8 +533,8 @@ func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 
 	responseBody, err := json.Marshal(response)
 	if err != nil {
-		logger.GetLogger().Error("Error occured while marshaling json")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		logger.GetLogger().Error("Error occured while marshaling json", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -525,7 +569,7 @@ func (h *urlHandler) GetUserURLs(w http.ResponseWriter, req *http.Request) {
 // Метод устанавливает JWT-cookie пользователя при необходимости.
 func (h *urlHandler) DeleteUserURLs(w http.ResponseWriter, req *http.Request) {
 	if req.Method != http.MethodDelete {
-		http.Error(w, "Incorrect HTTP method, only DELETE methods allowed", http.StatusMethodNotAllowed)
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 		return
 	}
 
@@ -534,7 +578,7 @@ func (h *urlHandler) DeleteUserURLs(w http.ResponseWriter, req *http.Request) {
 		logger.GetLogger().Error("error occured while trying to save user",
 			zap.String("original error message", err.Error()),
 		)
-		http.Error(w, "Error occured while trying to save user", http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
@@ -542,14 +586,14 @@ func (h *urlHandler) DeleteUserURLs(w http.ResponseWriter, req *http.Request) {
 	dec := json.NewDecoder(req.Body)
 	if err := dec.Decode(&reqBody); err != nil {
 		logger.GetLogger().Error("Error occured while decoding request body")
-		http.Error(w, "Error occured while decoding request body", http.StatusBadRequest)
+		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 		return
 	}
 
 	h.urlService.ScheduleUserURLsJob(context, reqBody)
 
 	if err = h.setUserJWTCookieIfNeeded(context, w); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 
 	w.WriteHeader(http.StatusAccepted)
