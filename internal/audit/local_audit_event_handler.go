@@ -1,6 +1,7 @@
 package audit
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -22,7 +23,7 @@ func (h *localAuditEventhandler) GetID() string {
 	return "LocalAuditEventhandler"
 }
 
-func (h *localAuditEventhandler) SaveEvent(event *model.AuditEvent) error {
+func (h *localAuditEventhandler) SaveEvent(ctx context.Context, event *model.AuditEvent) error {
 	data, err := json.Marshal(*event)
 	if err != nil {
 		return fmt.Errorf("audit marshal error: %w", err)
