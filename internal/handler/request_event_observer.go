@@ -1,8 +1,12 @@
 package handler
 
-import "github.com/TMWF/url-shortener/internal/model"
+import (
+	"context"
+
+	"github.com/TMWF/url-shortener/internal/model"
+)
 
 type RequestEventObserver interface {
-	SaveEvent(*model.AuditEvent) error
+	SaveEvent(context.Context, *model.AuditEvent) error
 	GetID() string
 }

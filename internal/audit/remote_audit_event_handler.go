@@ -2,6 +2,7 @@ package audit
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,7 +30,7 @@ func (h *RemoteAuditEventHandler) GetID() string {
 	return "RemoteAuditEventHandler"
 }
 
-func (h *RemoteAuditEventHandler) SaveEvent(event *model.AuditEvent) error {
+func (h *RemoteAuditEventHandler) SaveEvent(ctx context.Context, event *model.AuditEvent) error {
 	data, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("audit marshal error: %w", err)

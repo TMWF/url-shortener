@@ -24,7 +24,7 @@ type urlHandler struct {
 	jwtHelper           util.UserJWTBuilder
 	urlService          service.URLService
 	auditEventObservers map[string]RequestEventObserver
-	semaphore           util.Semaphore
+	observerSemaphores  map[string]chan struct{}
 }
 
 var _ RequestEventPublisher = (*urlHandler)(nil)
@@ -32,9 +32,11 @@ var _ RequestEventPublisher = (*urlHandler)(nil)
 func (h *urlHandler) RegisterObserver(observer RequestEventObserver) {
 	if h.auditEventObservers == nil {
 		h.auditEventObservers = make(map[string]RequestEventObserver)
+		h.observerSemaphores = make(map[string]chan struct{})
 	}
 
 	h.auditEventObservers[observer.GetID()] = observer
+	h.observerSemaphores[observer.GetID()] = make(chan struct{}, 100)
 }
 
 func (h *urlHandler) DeregisterObserver(observerID string) {
@@ -42,27 +44,66 @@ func (h *urlHandler) DeregisterObserver(observerID string) {
 }
 
 func (h *urlHandler) Notify(event *model.AuditEvent) {
-	for _, observer := range h.auditEventObservers {
-		go func() {
-			h.semaphore.Acquire()
-			defer h.semaphore.Release()
 
-			err := observer.SaveEvent(event)
-			if err != nil {
-				logger.GetLogger().Error(
-					"Error occured while handling audit event",
-					zap.Error(err),
-				)
-			}
-		}()
+	for name, observer := range h.auditEventObservers {
+		sem, exists := h.observerSemaphores[name]
+		if !exists {
+			continue
+		}
+
+		obsName := name
+		obs := observer
+
+		select {
+		case sem <- struct{}{}:
+			go func() {
+				defer func() {
+					<-sem
+				}()
+
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				defer cancel()
+
+				if err := obs.SaveEvent(ctx, event); err != nil {
+					logger.GetLogger().Error("Observer failed to process event",
+						zap.String("observer", obsName),
+						zap.Error(err),
+					)
+				}
+			}()
+
+		default:
+			// Семафор забит (канал полон) -> Событие отбрасывается
+			logger.GetLogger().Warn("Audit event dropped: observer buffer is full (slow consumer)",
+				zap.String("observer", obsName),
+				zap.Int64("event_timestamp", event.UnixTimeStamp),
+				zap.String("user_id", event.UserID),
+			)
+		}
 	}
 }
+
+// func (h *urlHandler) Notify(event *model.AuditEvent) {
+// 	for _, observer := range h.auditEventObservers {
+// 		go func() {
+// 			h.semaphore.Acquire()
+// 			defer h.semaphore.Release()
+
+// 			err := observer.SaveEvent(event)
+// 			if err != nil {
+// 				logger.GetLogger().Error(
+// 					"Error occured while handling audit event",
+// 					zap.Error(err),
+// 				)
+// 			}
+// 		}()
+// 	}
+// }
 
 func NewURLHandler(service service.URLService, jwtHelper util.UserJWTBuilder) *urlHandler {
 	return &urlHandler{
 		urlService: service,
 		jwtHelper:  jwtHelper,
-		semaphore:  *util.NewSemaphore(100),
 	}
 }
 
