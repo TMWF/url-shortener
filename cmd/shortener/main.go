@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -18,6 +19,12 @@ import (
 	"github.com/TMWF/url-shortener/internal/util"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
+)
+
+var (
+	buildVersion string
+	buildDate    string
+	buildCommit  string
 )
 
 func main() {
@@ -95,4 +102,25 @@ func createRouter(config *config.Config, db *sql.DB, auditFile *os.File) http.Ha
 	}
 
 	return router
+}
+
+func printBuildInfo() {
+	version := "N/A"
+	if buildVersion != "" {
+		version = buildVersion
+	}
+
+	date := "N/A"
+	if buildDate != "" {
+		date = buildDate
+	}
+
+	commit := "N/A"
+	if buildCommit != "" {
+		commit = buildCommit
+	}
+
+	fmt.Printf("Build version: %s\n", version)
+	fmt.Printf("Build date: %s\n", date)
+	fmt.Printf("Build commit: %s\n", commit)
 }
