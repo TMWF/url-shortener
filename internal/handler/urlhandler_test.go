@@ -169,7 +169,7 @@ func TestShortenURL(t *testing.T) {
 		{
 			name:         "Wrong Method GET",
 			method:       http.MethodGet,
-			body:         "",
+			body:         http.StatusText(http.StatusMethodNotAllowed),
 			expectedCode: http.StatusMethodNotAllowed,
 		},
 		{
@@ -335,7 +335,7 @@ func TestShortenURLBatch(t *testing.T) {
 			mockServiceResponse:  nil,
 			mockServiceError:     nil,
 			expectedStatusCode:   http.StatusMethodNotAllowed,
-			expectedResponseBody: "Incorrect HTTP method, only POST methods allowed\n",
+			expectedResponseBody: http.StatusText(http.StatusMethodNotAllowed),
 			expectLogError:       false,
 		},
 		{
@@ -345,19 +345,9 @@ func TestShortenURLBatch(t *testing.T) {
 			mockServiceResponse:  nil,
 			mockServiceError:     nil,
 			expectedStatusCode:   http.StatusBadRequest,
-			expectedResponseBody: "Error occured while decoding request body\n",
+			expectedResponseBody: http.StatusText(http.StatusBadRequest),
 			expectLogError:       true,
 		},
-		// {
-		// 	name:                 "Empty Batch Request",
-		// 	method:               http.MethodPost,
-		// 	requestBody:          []model.URLBatchRequestDto{},
-		// 	mockServiceResponse:  nil, // Не будет вызвано
-		// 	mockServiceError:     nil,
-		// 	expectedStatusCode:   http.StatusBadRequest,
-		// 	expectedResponseBody: "Request body cannot be empty\n",
-		// 	expectLogError:       false,
-		// },
 		{
 			name:   "Service Returns Error",
 			method: http.MethodPost,
@@ -367,7 +357,7 @@ func TestShortenURLBatch(t *testing.T) {
 			mockServiceResponse:  nil,
 			mockServiceError:     errors.New("database connection failed"),
 			expectedStatusCode:   http.StatusInternalServerError,
-			expectedResponseBody: "Error occured while getting shortened url\n",
+			expectedResponseBody: http.StatusText(http.StatusInternalServerError),
 			expectLogError:       true,
 		},
 	}
