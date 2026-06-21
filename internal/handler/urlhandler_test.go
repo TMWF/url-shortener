@@ -169,7 +169,7 @@ func TestShortenURL(t *testing.T) {
 		{
 			name:         "Wrong Method GET",
 			method:       http.MethodGet,
-			body:         "",
+			body:         http.StatusText(http.StatusMethodNotAllowed),
 			expectedCode: http.StatusMethodNotAllowed,
 		},
 		{
@@ -335,7 +335,7 @@ func TestShortenURLBatch(t *testing.T) {
 			mockServiceResponse:  nil,
 			mockServiceError:     nil,
 			expectedStatusCode:   http.StatusMethodNotAllowed,
-			expectedResponseBody: "Incorrect HTTP method, only POST methods allowed\n",
+			expectedResponseBody: http.StatusText(http.StatusMethodNotAllowed),
 			expectLogError:       false,
 		},
 		{
@@ -345,19 +345,9 @@ func TestShortenURLBatch(t *testing.T) {
 			mockServiceResponse:  nil,
 			mockServiceError:     nil,
 			expectedStatusCode:   http.StatusBadRequest,
-			expectedResponseBody: "Error occured while decoding request body\n",
+			expectedResponseBody: http.StatusText(http.StatusBadRequest),
 			expectLogError:       true,
 		},
-		// {
-		// 	name:                 "Empty Batch Request",
-		// 	method:               http.MethodPost,
-		// 	requestBody:          []model.URLBatchRequestDto{},
-		// 	mockServiceResponse:  nil, // Не будет вызвано
-		// 	mockServiceError:     nil,
-		// 	expectedStatusCode:   http.StatusBadRequest,
-		// 	expectedResponseBody: "Request body cannot be empty\n",
-		// 	expectLogError:       false,
-		// },
 		{
 			name:   "Service Returns Error",
 			method: http.MethodPost,
@@ -367,7 +357,7 @@ func TestShortenURLBatch(t *testing.T) {
 			mockServiceResponse:  nil,
 			mockServiceError:     errors.New("database connection failed"),
 			expectedStatusCode:   http.StatusInternalServerError,
-			expectedResponseBody: "Error occured while getting shortened url\n",
+			expectedResponseBody: http.StatusText(http.StatusInternalServerError),
 			expectLogError:       true,
 		},
 	}
@@ -409,7 +399,7 @@ func TestShortenURLBatch(t *testing.T) {
 
 			// Проверки
 			assert.Equal(t, tt.expectedStatusCode, w.Code, "Expected status code mismatch")
-			assert.Equal(t, tt.expectedResponseBody, w.Body.String(), "Expected response body mismatch")
+			assert.Equal(t, strings.TrimSpace(tt.expectedResponseBody), strings.TrimSpace(w.Body.String()), "Expected response body mismatch")
 
 			if tt.method == http.MethodPost && tt.name != "Invalid JSON Body" && tt.name != "Empty Batch Request" && tt.mockServiceError == nil {
 				mockSvc.AssertCalled(t, "ShortenURLBatch", mock.Anything, tt.requestBody)

@@ -1,10 +1,11 @@
 module github.com/TMWF/url-shortener
 
-go 1.24.11
+go 1.26.0
 
 require github.com/stretchr/testify v1.11.1
 
 require (
+	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/golang-migrate/migrate/v4 v4.19.1 // indirect
 	github.com/jackc/pgerrcode v0.0.0-20220416144525-469b46aa5efa // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect

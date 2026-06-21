@@ -13,13 +13,54 @@ import (
 	"go.uber.org/zap"
 )
 
+// URLService описывает бизнес-логику работы с URL и пользователями.
+//
+// Интерфейс инкапсулирует операции сокращения ссылок, получения исходных URL,
+// получения ссылок текущего пользователя, постановки задач на удаление URL,
+// а также сохранения пользователя.
+//
+// Реализации URLService должны использовать переданный context.Context для
+// контроля времени выполнения, отмены операций и передачи пользовательских
+// данных между слоями приложения.
 type URLService interface {
+	// ShortenURL создаёт короткую ссылку для переданного URL.
+	//
+	// Возвращает сокращённый URL или ошибку, если создать ссылку не удалось.
 	ShortenURL(ctx context.Context, url string) (string, error)
+
+	// ShortenURLAPI создаёт короткую ссылку на основе API-запроса.
+	//
+	// Принимает модель запроса model.ShortenURLRequest и возвращает модель
+	// ответа model.ShortenURLResponse с сокращённым URL.
 	ShortenURLAPI(ctx context.Context, request *model.ShortenURLRequest) (*model.ShortenURLResponse, error)
+
+	// ShortenURLBatch выполняет пакетное сокращение URL.
+	//
+	// Принимает список URL с корреляционными идентификаторами и возвращает
+	// список результатов сокращения с теми же корреляционными идентификаторами.
 	ShortenURLBatch(ctx context.Context, request []model.URLBatchRequestDto) ([]model.URLBatchResponseDto, error)
+
+	// GetOriginalURL возвращает исходный URL по идентификатору короткой ссылки.
+	//
+	// Возвращает исходный URL или ошибку, если ссылка не найдена, удалена
+	// или произошла внутренняя ошибка.
 	GetOriginalURL(ctx context.Context, id string) (string, error)
+
+	// GetUserURLs возвращает список URL, созданных текущим пользователем.
+	//
+	// Идентификатор пользователя ожидается в переданном контексте.
 	GetUserURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error)
+
+	// ScheduleUserURLsJob ставит задачу на асинхронное удаление URL пользователя.
+	//
+	// Принимает список идентификаторов коротких URL. Идентификатор пользователя
+	// ожидается в переданном контексте.
 	ScheduleUserURLsJob(ctx context.Context, urlIDs []string)
+
+	// SaveUser сохраняет пользователя и возвращает его идентификатор.
+	//
+	// Используется, когда для текущего запроса необходимо создать или
+	// зарегистрировать пользователя.
 	SaveUser(ctx context.Context) (int, error)
 }
 
