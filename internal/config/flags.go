@@ -14,6 +14,7 @@ import (
 type Config struct {
 	ServerHost           string `env:"SERVER_ADDRESS"`
 	BaseURL              string `env:"BASE_URL"`
+	EnableHttps          bool   `env:"ENABLE_HTTPS"`
 	LogLevel             string `env:"LOG_LEVEL"`
 	URLStoragePath       string `env:"FILE_STORAGE_PATH"`
 	AuditFileStoragePath string `env:"AUDIT_FILE"`
@@ -26,6 +27,7 @@ func InitialiseConfigs() *Config {
 	cfg := &Config{}
 	var serverHostFlag string
 	var baseURLFlag string
+	var enableHtttps bool
 	var logLevel string
 	var urlStoragePath string
 	var databaseDSN string
@@ -58,6 +60,10 @@ func InitialiseConfigs() *Config {
 
 	if cfg.BaseURL == "" {
 		cfg.BaseURL = baseURLFlag
+	}
+
+	if cfg.EnableHttps || enableHtttps {
+		cfg.EnableHttps = true
 	}
 
 	if cfg.LogLevel == "" {

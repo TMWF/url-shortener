@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/TMWF/url-shortener/internal/audit"
 	"github.com/TMWF/url-shortener/internal/config"
@@ -65,7 +66,25 @@ func main() {
 	router := createRouter(cfg, db, auditFile)
 	logger.GetLogger().Info("Starting server on port " + cfg.ServerHost)
 
-	log.Fatal(http.ListenAndServe(cfg.ServerHost, router))
+	if cfg.EnableHttps {
+		util.GenerateCertificate()
+
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Fatal(
+			http.ListenAndServeTLS(
+				cfg.ServerHost,
+				filepath.Join(homeDir, "cert.pem"),
+				filepath.Join(homeDir, "private.pem"),
+				router,
+			),
+		)
+	} else {
+		log.Fatal(http.ListenAndServe(cfg.ServerHost, router))
+	}
 }
 
 func createRouter(config *config.Config, db *sql.DB, auditFile *os.File) http.Handler {
