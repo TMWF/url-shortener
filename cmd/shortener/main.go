@@ -28,6 +28,7 @@ var (
 )
 
 func main() {
+	printBuildInfo()
 	cfg := config.InitialiseConfigs()
 
 	err := logger.Initialize(cfg.LogLevel)
