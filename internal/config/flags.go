@@ -2,7 +2,9 @@
 package config
 
 import (
+	"encoding/json"
 	"flag"
+	"os"
 	"time"
 
 	"github.com/TMWF/url-shortener/internal/config/db"
@@ -59,15 +61,39 @@ func InitialiseConfigs() *Config {
 		)
 	}
 
+	if cfg.ConfigFilePath == "" {
+		cfg.ConfigFilePath = cConfigPathFlag
+
+		if cfg.ConfigFilePath == "" {
+			cfg.ConfigFilePath = configFilePath
+		}
+	}
+
+	var jsonConfig jsonConfig
+	if cfg.ConfigFilePath != "" {
+		temp, err := loadFromJSON(cfg.ConfigFilePath)
+		if err != nil {
+			logger.GetLogger().Warn("Warning: failed to load config from JSON file", zap.Error(err))
+		} else {
+			jsonConfig = *temp
+		}
+	}
+
 	if cfg.ServerHost == "" {
 		cfg.ServerHost = serverHostFlag
+		if cfg.ServerHost == "" {
+			cfg.ServerHost = jsonConfig.ServerAddress
+		}
 	}
 
 	if cfg.BaseURL == "" {
 		cfg.BaseURL = baseURLFlag
+		if cfg.BaseURL == "" {
+			cfg.BaseURL = jsonConfig.BaseURL
+		}
 	}
 
-	if cfg.EnableHttps || enableHtttps {
+	if cfg.EnableHttps || enableHtttps || jsonConfig.EnableHTTPS {
 		cfg.EnableHttps = true
 	}
 
@@ -77,11 +103,18 @@ func InitialiseConfigs() *Config {
 
 	if cfg.URLStoragePath == "" {
 		cfg.URLStoragePath = urlStoragePath
+		if cfg.URLStoragePath == "" {
+			cfg.URLStoragePath = jsonConfig.FileStoragePath
+		}
 	}
 
 	if cfg.DatabaseDSN == "" {
-		logger.GetLogger().Debug("Setting database config")
+		logger.GetLogger().Debug("Setting database config from flag value")
 		cfg.DatabaseDSN = databaseDSN
+		if cfg.DatabaseDSN == "" {
+			logger.GetLogger().Debug("Setting database config from flag value")
+			cfg.DatabaseDSN = jsonConfig.DatabaseDSN
+		}
 	}
 
 	if cfg.SecretKey == "" {
@@ -96,19 +129,22 @@ func InitialiseConfigs() *Config {
 		cfg.AuditURL = auditURL
 	}
 
-	if cfg.ConfigFilePath == "" {
-		cfg.ConfigFilePath = cConfigPathFlag
-
-		if cfg.ConfigFilePath == "" {
-			cfg.ConfigFilePath = configFilePath
-		}
-	}
-
-	if cfg.ConfigFilePath != "" {
-
-	}
-
 	cfg.TokenExp = 3 * time.Hour
 
 	return cfg
+}
+
+func loadFromJSON(path string) (*jsonConfig, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	var temp jsonConfig
+	if err := json.NewDecoder(file).Decode(&temp); err != nil {
+		return nil, err
+	}
+
+	return &temp, nil
 }
