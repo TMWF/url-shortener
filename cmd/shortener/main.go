@@ -22,9 +22,9 @@ import (
 )
 
 var (
-	buildVersion string
-	buildDate    string
-	buildCommit  string
+	BuildVersion string = "N/A"
+	BuildDate    string = "N/A"
+	BuildCommit  string = "N/A"
 )
 
 func main() {
@@ -106,22 +106,7 @@ func createRouter(config *config.Config, db *sql.DB, auditFile *os.File) http.Ha
 }
 
 func printBuildInfo() {
-	version := "N/A"
-	if buildVersion != "" {
-		version = buildVersion
-	}
-
-	date := "N/A"
-	if buildDate != "" {
-		date = buildDate
-	}
-
-	commit := "N/A"
-	if buildCommit != "" {
-		commit = buildCommit
-	}
-
-	fmt.Printf("Build version: %s\n", version)
-	fmt.Printf("Build date: %s\n", date)
-	fmt.Printf("Build commit: %s\n", commit)
+	fmt.Printf("Build version: %s\n", BuildVersion)
+	fmt.Printf("Build date: %s\n", BuildDate)
+	fmt.Printf("Build commit: %s\n", BuildCommit)
 }
