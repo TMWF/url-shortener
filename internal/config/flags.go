@@ -19,6 +19,7 @@ type Config struct {
 	URLStoragePath       string `env:"FILE_STORAGE_PATH"`
 	AuditFileStoragePath string `env:"AUDIT_FILE"`
 	AuditURL             string `env:"AUDIT_URL"`
+	ConfigFilePath       string `env:"CONFIG"`
 	db.PostgreSQLConfig
 	UserJWTConfig
 }
@@ -35,9 +36,11 @@ func InitialiseConfigs() *Config {
 	var secretKey string
 	var auditFilePath string
 	var auditURL string
+	var cConfigPathFlag string
+	var configFilePath string
 
-	flag.StringVar(&serverHostFlag, "a", "localhost:8080", "address and port to run server")
-	flag.StringVar(&baseURLFlag, "b", "http://localhost:8080", "address and port to run server")
+	flag.StringVar(&serverHostFlag, "a", "", "address and port to run server")
+	flag.StringVar(&baseURLFlag, "b", "", "address and port to run server")
 	flag.StringVar(&logLevel, "c", "DEBUG", "logging level")
 	flag.StringVar(&urlStoragePath, "f", "", "File storage path for urls")
 	flag.StringVar(&databaseDSN, "d", "", "PostgreSQL DSN")
@@ -45,6 +48,8 @@ func InitialiseConfigs() *Config {
 	flag.StringVar(&auditURL, "audit-url", "", "Audit Event Server URL Path")
 	flag.IntVar(&tokenExp, "t", 3, "Token expiration in hours")
 	flag.StringVar(&secretKey, "s", "supersecretkey", "JWT secret key")
+	flag.StringVar(&cConfigPathFlag, "c", "", "config file path")
+	flag.StringVar(&configFilePath, "config", "", "config file path")
 	flag.Parse()
 
 	err := env.Parse(cfg)
@@ -89,6 +94,18 @@ func InitialiseConfigs() *Config {
 
 	if cfg.AuditURL == "" {
 		cfg.AuditURL = auditURL
+	}
+
+	if cfg.ConfigFilePath == "" {
+		cfg.ConfigFilePath = cConfigPathFlag
+
+		if cfg.ConfigFilePath == "" {
+			cfg.ConfigFilePath = configFilePath
+		}
+	}
+
+	if cfg.ConfigFilePath != "" {
+
 	}
 
 	cfg.TokenExp = 3 * time.Hour
