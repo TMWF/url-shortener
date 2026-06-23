@@ -55,19 +55,16 @@ func main() {
 		// Пропускаем скрытые директории, вендор и саму директорию генератора
 		if d.IsDir() {
 			name := d.Name()
+			// Пропускаем скрытые директории, вендор и саму директорию генератора
 			if strings.HasPrefix(name, ".") || name == "vendor" || name == "reset" {
 				return filepath.SkipDir
 			}
-			return nil
-		}
 
-		// Обрабатываем только директории, содержащие .go файлы (сканируем на уровне папок)
-		if filepath.Ext(path) == ".go" {
-			dirPath := filepath.Dir(path)
-			if err := processDirectory(dirPath); err != nil {
-				fmt.Fprintf(os.Stderr, "ошибка обработки директории %s: %v\n", dirPath, err)
+			if err := processDirectory(path); err != nil {
+				fmt.Fprintf(os.Stderr, "ошибка обработки директории %s: %v\n", path, err)
 			}
 		}
+
 		return nil
 	})
 
