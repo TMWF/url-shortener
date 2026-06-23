@@ -230,7 +230,13 @@ func generateResetFile(path string, pkgName string, structs []StructInfo) error 
 func getResetStmt(fieldName string, expr ast.Expr) string {
 	switch t := expr.(type) {
 	case *ast.ArrayType:
-		return fmt.Sprintf("rs.%s = rs.%s[:0]", fieldName, fieldName)
+		if t.Len == nil {
+			// Это слайс (например, []int) — обрезаем по длине
+			return fmt.Sprintf("rs.%s = rs.%s[:0]", fieldName, fieldName)
+		}
+		// Это массив (например, [3]int) — сбрасываем к нулевому значению типа: rs.Field = [3]int{}
+		arrayTypeStr := exprToString(t)
+		return fmt.Sprintf("rs.%s = %s{}", fieldName, arrayTypeStr)
 
 	case *ast.MapType:
 		return fmt.Sprintf("clear(rs.%s)", fieldName)
