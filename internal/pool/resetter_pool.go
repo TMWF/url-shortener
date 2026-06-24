@@ -1,6 +1,12 @@
 package pool
 
-import "sync"
+import (
+	"errors"
+	"sync"
+)
+
+// ErrNilFactory возвращается, когда в конструктор пула передана пустая функция-фабрика.
+var ErrNilFactory = errors.New("pool: factory function cannot be nil")
 
 // Resetter описывает интерфейс объектов, состояние которых может быть сброшено
 // к начальным (нулевым) значениям.
@@ -24,14 +30,18 @@ type Pool[T Resetter] struct {
 //
 // Функция-конструктор принимает аргумент factory — функцию, которая будет
 // вызываться для создания и инициализации нового объекта типа T, когда пул пуст.
-func New[T Resetter](factory func() T) *Pool[T] {
+func New[T Resetter](factory func() T) (*Pool[T], error) {
+	if factory == nil {
+		return nil, ErrNilFactory
+	}
+
 	return &Pool[T]{
 		internalPool: sync.Pool{
 			New: func() any {
 				return factory()
 			},
 		},
-	}
+	}, nil
 }
 
 // Get извлекает объект из пула.
