@@ -3,7 +3,7 @@
 В данной директории содержится код, который скомпилируется в бинарное приложение.
 
 Чтобы пререопределить глобальные переменные BuildVersion, BuildDate, BuildCommit, нужно запускать программу, передав флаги линковщика, командой вида:
-`go run -ldflags "-X main.BuildVersion=v1.0.1 -X main.BuildCommit=Example -X 'main.BuildTime=$(date +'%Y/%m/%d %H:%M:%S')'" main.go`
+`go run -ldflags "-X main.buildVersion=v1.0.1 -X main.buildCommit=Example -X 'main.buildTime=$(date +'%Y/%m/%d %H:%M:%S')'" main.go`
 
 Рекомендуется помещать только код, необходимый для запуска приложения, но не бизнес-логику.
 
