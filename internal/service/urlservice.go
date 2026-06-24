@@ -1,3 +1,4 @@
+// Package service contains application configs
 package service
 
 import (

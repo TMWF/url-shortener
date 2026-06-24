@@ -83,23 +83,6 @@ func (h *urlHandler) Notify(event *model.AuditEvent) {
 	}
 }
 
-// func (h *urlHandler) Notify(event *model.AuditEvent) {
-// 	for _, observer := range h.auditEventObservers {
-// 		go func() {
-// 			h.semaphore.Acquire()
-// 			defer h.semaphore.Release()
-
-// 			err := observer.SaveEvent(event)
-// 			if err != nil {
-// 				logger.GetLogger().Error(
-// 					"Error occured while handling audit event",
-// 					zap.Error(err),
-// 				)
-// 			}
-// 		}()
-// 	}
-// }
-
 func NewURLHandler(service service.URLService, jwtHelper util.UserJWTBuilder) *urlHandler {
 	return &urlHandler{
 		urlService: service,

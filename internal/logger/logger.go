@@ -1,3 +1,4 @@
+// Package logger contains preset logger for usage in application
 package logger
 
 import (

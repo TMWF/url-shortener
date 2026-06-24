@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -20,7 +21,14 @@ import (
 	"go.uber.org/zap"
 )
 
+var (
+	buildVersion string = "N/A"
+	buildDate    string = "N/A"
+	buildCommit  string = "N/A"
+)
+
 func main() {
+	printBuildInfo()
 	cfg := config.InitialiseConfigs()
 
 	err := logger.Initialize(cfg.LogLevel)
@@ -95,4 +103,10 @@ func createRouter(config *config.Config, db *sql.DB, auditFile *os.File) http.Ha
 	}
 
 	return router
+}
+
+func printBuildInfo() {
+	fmt.Printf("Build version: %s\n", buildVersion)
+	fmt.Printf("Build date: %s\n", buildDate)
+	fmt.Printf("Build commit: %s\n", buildCommit)
 }

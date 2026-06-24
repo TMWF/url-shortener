@@ -1,3 +1,4 @@
+// Package database contains method responsible for setting up a connection to database
 package database
 
 import (
