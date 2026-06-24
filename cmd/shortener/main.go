@@ -1,13 +1,17 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"github.com/TMWF/url-shortener/internal/audit"
 	"github.com/TMWF/url-shortener/internal/config"
@@ -67,24 +71,51 @@ func main() {
 	router := createRouter(cfg, db, auditFile)
 	logger.GetLogger().Info("Starting server on port " + cfg.ServerHost)
 
-	if cfg.EnableHttps {
-		util.GenerateCertificate()
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			log.Fatal(err)
-		}
+	server := &http.Server{
+		Addr:    cfg.ServerHost,
+		Handler: router,
+	}
 
-		log.Fatal(
-			http.ListenAndServeTLS(
-				cfg.ServerHost,
+	go func() {
+		if cfg.EnableHttps {
+			util.GenerateCertificate()
+
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			err = server.ListenAndServeTLS(
 				filepath.Join(homeDir, "cert.pem"),
 				filepath.Join(homeDir, "private.pem"),
-				router,
-			),
-		)
+			)
+
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Fatal(err)
+			}
+
+		} else {
+			err = server.ListenAndServe()
+
+			if err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Fatal(err)
+			}
+		}
+	}()
+
+	sig := <-sigChan
+	logger.GetLogger().Info("Shutting down gracefully...", zap.String("signal", sig.String()))
+
+	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 15*time.Second)
+	defer shutdownRelease()
+
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		logger.GetLogger().Error("HTTP server shutdown error", zap.Error(err))
 	} else {
-		log.Fatal(http.ListenAndServe(cfg.ServerHost, router))
+		logger.GetLogger().Info("HTTP server stopped successfully")
 	}
 }
 
