@@ -14,6 +14,11 @@ type mockDBPinger struct {
 	mock.Mock
 }
 
+// CountUsersAndURLs implements [repository.DBStorage].
+func (m *mockDBPinger) CountUsersAndURLs(ctx context.Context) (*model.StatsModel, error) {
+	panic("unimplemented")
+}
+
 // GetURL implements [repository.DBStorage].
 func (m *mockDBPinger) GetURL(ctx context.Context, id string) (string, error) {
 	args := m.Called(ctx, id)

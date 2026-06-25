@@ -22,6 +22,7 @@ type Config struct {
 	AuditFileStoragePath string `env:"AUDIT_FILE"`
 	AuditURL             string `env:"AUDIT_URL"`
 	ConfigFilePath       string `env:"CONFIG"`
+	TrustedSubnet        string `env:"TRUSTED_SUBNET"`
 	db.PostgreSQLConfig
 	UserJWTConfig
 }
@@ -40,6 +41,7 @@ func InitialiseConfigs() *Config {
 	var auditURL string
 	var cConfigPathFlag string
 	var configFilePath string
+	var trustedSubnet string
 
 	flag.StringVar(&serverHostFlag, "a", "", "address and port to run server")
 	flag.StringVar(&baseURLFlag, "b", "", "address and port to run server")
@@ -52,6 +54,7 @@ func InitialiseConfigs() *Config {
 	flag.StringVar(&secretKey, "s", "supersecretkey", "JWT secret key")
 	flag.StringVar(&cConfigPathFlag, "c", "", "config file path")
 	flag.StringVar(&configFilePath, "config", "", "config file path")
+	flag.StringVar(&trustedSubnet, "t", "", "можно передать строковое представление бесклассовой адресации (CIDR)")
 	flag.Parse()
 
 	err := env.Parse(cfg)
@@ -76,6 +79,13 @@ func InitialiseConfigs() *Config {
 			logger.GetLogger().Warn("Warning: failed to load config from JSON file", zap.Error(err))
 		} else {
 			jsonConfig = *temp
+		}
+	}
+
+	if cfg.TrustedSubnet == "" {
+		cfg.TrustedSubnet = trustedSubnet
+		if cfg.TrustedSubnet == "" {
+			cfg.TrustedSubnet = jsonConfig.TrustedSubnet
 		}
 	}
 

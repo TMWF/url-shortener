@@ -123,7 +123,7 @@ func createRouter(config *config.Config, db *sql.DB, auditFile *os.File) http.Ha
 	storage := repository.GetStorage(config, db)
 	jwtHelper := util.NewJWTHelper(config)
 	urlService := service.NewURLService(storage, config)
-	urlHandler := handler.NewURLHandler(urlService, jwtHelper)
+	urlHandler := handler.NewURLHandlerWithTrustedSubnet(urlService, jwtHelper, config.TrustedSubnet)
 
 	if auditFile != nil {
 		localAuditeventHandler := audit.NewLocalAuditEventHandler(auditFile)
@@ -145,6 +145,7 @@ func createRouter(config *config.Config, db *sql.DB, auditFile *os.File) http.Ha
 	router.Get(`/api/user/urls`, urlHandler.GetUserURLs)
 	router.Delete(`/api/user/urls`, urlHandler.DeleteUserURLs)
 	router.Get(`/{id}`, urlHandler.GetOriginalURL)
+	router.Get(`/api/internal/stats`, urlHandler.GetStats)
 
 	if dbStorage, ok := storage.(repository.DBStorage); ok {
 		pingService := service.NewPingDBService(dbStorage)

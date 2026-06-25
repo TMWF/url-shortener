@@ -22,6 +22,11 @@ type mockURLService struct {
 	SaveUserFunc            func(ctx context.Context) (int, error)
 }
 
+// CountUsersAndURLs implements [service.URLService].
+func (m *mockURLService) CountUsersAndURLs(ctx context.Context) (*model.StatsModel, error) {
+	panic("unimplemented")
+}
+
 func (m *mockURLService) ShortenURL(ctx context.Context, url string) (string, error) {
 	if m.ShortenURLFunc == nil {
 		panic("mockURLService: ShortenURLFunc is not defined")
