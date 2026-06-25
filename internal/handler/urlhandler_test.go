@@ -29,6 +29,11 @@ type MockURLService struct {
 	mock.Mock
 }
 
+// CountUsersAndURLs implements [service.URLService].
+func (m *MockURLService) CountUsersAndURLs(ctx context.Context) (*model.StatsModel, error) {
+	panic("unimplemented")
+}
+
 // GetUserURLs implements [service.URLService].
 func (m *MockURLService) GetUserURLs(ctx context.Context) ([]model.GetUserURLsResponseModel, error) {
 	args := m.Called(ctx)
