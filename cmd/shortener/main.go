@@ -84,7 +84,7 @@ func main() {
 
 	go func() {
 		if cfg.EnableHttps {
-			util.GenerateCertificate()
+			util.GenerateCertificate(cancel)
 
 			homeDir, err := os.UserHomeDir()
 			if err != nil {
