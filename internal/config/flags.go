@@ -43,7 +43,7 @@ func InitialiseConfigs() *Config {
 
 	flag.StringVar(&serverHostFlag, "a", "", "address and port to run server")
 	flag.StringVar(&baseURLFlag, "b", "", "address and port to run server")
-	flag.StringVar(&logLevel, "c", "DEBUG", "logging level")
+	flag.StringVar(&logLevel, "ll", "DEBUG", "logging level")
 	flag.StringVar(&urlStoragePath, "f", "", "File storage path for urls")
 	flag.StringVar(&databaseDSN, "d", "", "PostgreSQL DSN")
 	flag.StringVar(&auditFilePath, "audit-file", "", "Audit Event FileStorage Path")
