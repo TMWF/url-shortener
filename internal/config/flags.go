@@ -21,6 +21,8 @@ type Config struct {
 	URLStoragePath       string `env:"FILE_STORAGE_PATH"`
 	AuditFileStoragePath string `env:"AUDIT_FILE"`
 	AuditURL             string `env:"AUDIT_URL"`
+	CertFilepath         string `env:"CERT_FILE_PATH"`
+	KeyFilePath          string `env:"KEY_FILE_PATH"`
 	ConfigFilePath       string `env:"CONFIG"`
 	db.PostgreSQLConfig
 	UserJWTConfig
@@ -40,6 +42,8 @@ func InitialiseConfigs() *Config {
 	var auditURL string
 	var cConfigPathFlag string
 	var configFilePath string
+	var certFilePath string
+	var keyFilePath string
 
 	flag.StringVar(&serverHostFlag, "a", "", "address and port to run server")
 	flag.StringVar(&baseURLFlag, "b", "", "address and port to run server")
@@ -49,6 +53,8 @@ func InitialiseConfigs() *Config {
 	flag.StringVar(&databaseDSN, "d", "", "PostgreSQL DSN")
 	flag.StringVar(&auditFilePath, "audit-file", "", "Audit Event FileStorage Path")
 	flag.StringVar(&auditURL, "audit-url", "", "Audit Event Server URL Path")
+	flag.StringVar(&certFilePath, "cfp", "cert.pem", "certificate file path")
+	flag.StringVar(&keyFilePath, "cfp", "private.pem", "certificate file path")
 	flag.IntVar(&tokenExp, "t", 3, "Token expiration in hours")
 	flag.StringVar(&secretKey, "sk", "supersecretkey", "JWT secret key")
 	flag.StringVar(&cConfigPathFlag, "c", "", "config file path")
@@ -78,6 +84,14 @@ func InitialiseConfigs() *Config {
 		} else {
 			jsonConfig = *temp
 		}
+	}
+
+	if cfg.CertFilepath == "" {
+		cfg.ConfigFilePath = configFilePath
+	}
+
+	if cfg.KeyFilePath == "" {
+		cfg.KeyFilePath = keyFilePath
 	}
 
 	if cfg.ServerHost == "" {

@@ -84,7 +84,7 @@ func main() {
 
 	go func() {
 		if cfg.EnableHttps {
-			util.GenerateCertificate(cancel)
+			util.GenerateCertificate(cancel, cfg)
 
 			homeDir, err := os.UserHomeDir()
 			if err != nil {
@@ -92,8 +92,8 @@ func main() {
 			}
 
 			err = server.ListenAndServeTLS(
-				filepath.Join(homeDir, "cert.pem"),
-				filepath.Join(homeDir, "private.pem"),
+				filepath.Join(homeDir, cfg.CertFilepath),
+				filepath.Join(homeDir, cfg.KeyFilePath),
 			)
 
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
