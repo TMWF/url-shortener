@@ -23,6 +23,7 @@ type Config struct {
 	AuditURL             string `env:"AUDIT_URL"`
 	ConfigFilePath       string `env:"CONFIG"`
 	TrustedSubnet        string `env:"TRUSTED_SUBNET"`
+	GrpcAddress          string `env:"GRPC_ADDRESS"`
 	db.PostgreSQLConfig
 	UserJWTConfig
 }
@@ -42,6 +43,7 @@ func InitialiseConfigs() *Config {
 	var cConfigPathFlag string
 	var configFilePath string
 	var trustedSubnet string
+	var grpcAddress string
 
 	flag.StringVar(&serverHostFlag, "a", "", "address and port to run server")
 	flag.StringVar(&baseURLFlag, "b", "", "address and port to run server")
@@ -55,6 +57,7 @@ func InitialiseConfigs() *Config {
 	flag.StringVar(&cConfigPathFlag, "c", "", "config file path")
 	flag.StringVar(&configFilePath, "config", "", "config file path")
 	flag.StringVar(&trustedSubnet, "t", "", "можно передать строковое представление бесклассовой адресации (CIDR)")
+	flag.StringVar(&grpcAddress, "ga", "localhost:3200", "default grpc server address")
 	flag.Parse()
 
 	err := env.Parse(cfg)
@@ -125,6 +128,10 @@ func InitialiseConfigs() *Config {
 			logger.GetLogger().Debug("Setting database config from flag value")
 			cfg.DatabaseDSN = jsonConfig.DatabaseDSN
 		}
+	}
+
+	if cfg.GrpcAddress == "" {
+		cfg.GrpcAddress = grpcAddress
 	}
 
 	if cfg.SecretKey == "" {

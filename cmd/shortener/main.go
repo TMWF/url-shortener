@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,14 +17,18 @@ import (
 	"github.com/TMWF/url-shortener/internal/audit"
 	"github.com/TMWF/url-shortener/internal/config"
 	"github.com/TMWF/url-shortener/internal/database"
+	"github.com/TMWF/url-shortener/internal/grpcserver"
+	"github.com/TMWF/url-shortener/internal/grpcserver/interceptors"
 	"github.com/TMWF/url-shortener/internal/handler"
 	"github.com/TMWF/url-shortener/internal/logger"
 	"github.com/TMWF/url-shortener/internal/middleware"
+	"github.com/TMWF/url-shortener/internal/proto"
 	"github.com/TMWF/url-shortener/internal/repository"
 	"github.com/TMWF/url-shortener/internal/service"
 	"github.com/TMWF/url-shortener/internal/util"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -77,6 +82,14 @@ func main() {
 	server := &http.Server{
 		Addr:    cfg.ServerHost,
 		Handler: router,
+	}
+
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(interceptors.AuthInterceptor(cfg)))
+	proto.RegisterShortenerServiceServer(grpcServer, grpcserver.NewShortenerGRPCServer(urlService))
+
+	grpcListener, err := net.Listen("tcp", cfg.GrpcAddress)
+	if err != nil {
+		logger.GetLogger().Fatal("Failed to listen for gRPC", zap.Error(err))
 	}
 
 	go func() {
