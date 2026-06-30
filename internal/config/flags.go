@@ -21,6 +21,8 @@ type Config struct {
 	URLStoragePath       string `env:"FILE_STORAGE_PATH"`
 	AuditFileStoragePath string `env:"AUDIT_FILE"`
 	AuditURL             string `env:"AUDIT_URL"`
+	CertFilepath         string `env:"CERT_FILE_PATH"`
+	KeyFilePath          string `env:"KEY_FILE_PATH"`
 	ConfigFilePath       string `env:"CONFIG"`
 	TrustedSubnet        string `env:"TRUSTED_SUBNET"`
 	GrpcAddress          string `env:"GRPC_ADDRESS"`
@@ -42,18 +44,23 @@ func InitialiseConfigs() *Config {
 	var auditURL string
 	var cConfigPathFlag string
 	var configFilePath string
+	var certFilePath string
+	var keyFilePath string
 	var trustedSubnet string
 	var grpcAddress string
 
 	flag.StringVar(&serverHostFlag, "a", "", "address and port to run server")
 	flag.StringVar(&baseURLFlag, "b", "", "address and port to run server")
-	flag.StringVar(&logLevel, "c", "DEBUG", "logging level")
+	flag.StringVar(&logLevel, "ll", "DEBUG", "logging level")
+	flag.BoolVar(&enableHtttps, "s", false, "enable HTTPS flag")
 	flag.StringVar(&urlStoragePath, "f", "", "File storage path for urls")
 	flag.StringVar(&databaseDSN, "d", "", "PostgreSQL DSN")
 	flag.StringVar(&auditFilePath, "audit-file", "", "Audit Event FileStorage Path")
 	flag.StringVar(&auditURL, "audit-url", "", "Audit Event Server URL Path")
+	flag.StringVar(&certFilePath, "cfp", "cert.pem", "certificate file path")
+	flag.StringVar(&keyFilePath, "cfp", "private.pem", "certificate file path")
 	flag.IntVar(&tokenExp, "t", 3, "Token expiration in hours")
-	flag.StringVar(&secretKey, "s", "supersecretkey", "JWT secret key")
+	flag.StringVar(&secretKey, "sk", "supersecretkey", "JWT secret key")
 	flag.StringVar(&cConfigPathFlag, "c", "", "config file path")
 	flag.StringVar(&configFilePath, "config", "", "config file path")
 	flag.StringVar(&trustedSubnet, "t", "", "можно передать строковое представление бесклассовой адресации (CIDR)")
@@ -90,6 +97,14 @@ func InitialiseConfigs() *Config {
 		if cfg.TrustedSubnet == "" {
 			cfg.TrustedSubnet = jsonConfig.TrustedSubnet
 		}
+	}
+
+	if cfg.CertFilepath == "" {
+		cfg.ConfigFilePath = configFilePath
+	}
+
+	if cfg.KeyFilePath == "" {
+		cfg.KeyFilePath = keyFilePath
 	}
 
 	if cfg.ServerHost == "" {

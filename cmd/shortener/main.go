@@ -76,8 +76,11 @@ func main() {
 	router := createRouter(cfg, db, auditFile)
 	logger.GetLogger().Info("Starting server on port " + cfg.ServerHost)
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+	defer stop()
+
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(nil)
 
 	server := &http.Server{
 		Addr:    cfg.ServerHost,
@@ -94,33 +97,33 @@ func main() {
 
 	go func() {
 		if cfg.EnableHttps {
-			util.GenerateCertificate()
+			util.GenerateCertificate(cancel, cfg)
 
 			homeDir, err := os.UserHomeDir()
 			if err != nil {
-				log.Fatal(err)
+				cancel(fmt.Errorf("http server error: %w", err))
 			}
 
 			err = server.ListenAndServeTLS(
-				filepath.Join(homeDir, "cert.pem"),
-				filepath.Join(homeDir, "private.pem"),
+				filepath.Join(homeDir, cfg.CertFilepath),
+				filepath.Join(homeDir, cfg.KeyFilePath),
 			)
 
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
-				log.Fatal(err)
+				cancel(fmt.Errorf("http server error: %w", err))
 			}
 
 		} else {
 			err = server.ListenAndServe()
 
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
-				log.Fatal(err)
+				cancel(fmt.Errorf("http server error: %w", err))
 			}
 		}
 	}()
 
-	sig := <-sigChan
-	logger.GetLogger().Info("Shutting down gracefully...", zap.String("signal", sig.String()))
+	<-ctx.Done()
+	logger.GetLogger().Info("Shutting down gracefully...", zap.String("reason", ctx.Err().Error()))
 
 	shutdownCtx, shutdownRelease := context.WithTimeout(context.Background(), 15*time.Second)
 	defer shutdownRelease()
