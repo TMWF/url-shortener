@@ -2,20 +2,23 @@ package util
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"log"
+	"fmt"
 	"math/big"
 	"net"
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/TMWF/url-shortener/internal/config"
 )
 
-func GenerateCertificate() {
+func GenerateCertificate(cancel context.CancelCauseFunc, cfg *config.Config) {
 	// создаём шаблон сертификата
 	cert := &x509.Certificate{
 		// указываем уникальный номер сертификата
@@ -45,13 +48,13 @@ func GenerateCertificate() {
 	// используется rand.Reader в качестве источника случайных данных
 	privateKey, err := rsa.GenerateKey(rand.Reader, 4096)
 	if err != nil {
-		log.Fatal(err)
+		cancel(fmt.Errorf("error occured while generating certificate: %w", err))
 	}
 
 	// создаём сертификат x.509
 	certBytes, err := x509.CreateCertificate(rand.Reader, cert, cert, &privateKey.PublicKey, privateKey)
 	if err != nil {
-		log.Fatal(err)
+		cancel(fmt.Errorf("error occured while generating certificate: %w", err))
 	}
 
 	// кодируем сертификат и ключ в формате PEM, который
@@ -62,7 +65,7 @@ func GenerateCertificate() {
 		Bytes: certBytes,
 	})
 	if err != nil {
-		log.Fatal(err)
+		cancel(fmt.Errorf("error occured while generating certificate: %w", err))
 	}
 
 	var privateKeyPEM bytes.Buffer
@@ -71,20 +74,20 @@ func GenerateCertificate() {
 		Bytes: x509.MarshalPKCS1PrivateKey(privateKey),
 	})
 	if err != nil {
-		log.Fatal(err)
+		cancel(fmt.Errorf("error occured while generating certificate: %w", err))
 	}
 
 	// Сохраняем сертификат и приватный ключ в файлы ~/cert.pem и ~/private.pem
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		log.Fatal(err)
+		cancel(fmt.Errorf("error occured while generating certificate: %w", err))
 	}
 
-	if err = os.WriteFile(filepath.Join(homeDir, "cert.pem"), certPEM.Bytes(), 0644); err != nil {
-		log.Fatal(err)
+	if err = os.WriteFile(filepath.Join(homeDir, cfg.CertFilepath), certPEM.Bytes(), 0644); err != nil {
+		cancel(fmt.Errorf("error occured while generating certificate: %w", err))
 	}
 
-	if err = os.WriteFile(filepath.Join(homeDir, "private.pem"), privateKeyPEM.Bytes(), 0644); err != nil {
-		log.Fatal(err)
+	if err = os.WriteFile(filepath.Join(homeDir, cfg.KeyFilePath), privateKeyPEM.Bytes(), 0644); err != nil {
+		cancel(fmt.Errorf("error occured while generating certificate: %w", err))
 	}
 }
