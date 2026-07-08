@@ -2,6 +2,7 @@ package interceptors
 
 import (
 	"context"
+	"strings"
 
 	"github.com/TMWF/url-shortener/internal/config"
 	"github.com/TMWF/url-shortener/internal/middleware"
@@ -30,7 +31,7 @@ func AuthInterceptor(cfg *config.Config) grpc.UnaryServerInterceptor {
 		}
 
 		token := authHeader[0]
-		// token = strings.TrimPrefix(token, "Bearer ")
+		token, _ = strings.CutPrefix(token, "Bearer ")
 
 		userID, err := middleware.GetUserID(token, cfg)
 		if err != nil {
