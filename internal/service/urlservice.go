@@ -211,7 +211,6 @@ func (s *defaultURLService) CountUsersAndURLs(ctx context.Context) (*model.Stats
 	dbStorage, ok := s.storage.(repository.DBStorage)
 
 	if !ok {
-		logger.GetLogger().Warn("Not db storage")
 		return nil, fmt.Errorf("not dbStorage")
 	}
 
