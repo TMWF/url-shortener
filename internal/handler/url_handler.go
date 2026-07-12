@@ -603,10 +603,6 @@ func (h *urlHandler) DeleteUserURLs(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h *urlHandler) GetStats(w http.ResponseWriter, req *http.Request) {
-	if req.Method != http.MethodGet {
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
-		return
-	}
 
 	if h.ipNet == nil {
 		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
