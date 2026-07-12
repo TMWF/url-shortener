@@ -33,7 +33,7 @@ func (s *ShortenerGRPCServer) ShortenURL(ctx context.Context, req *proto.URLShor
 		return nil, status.Errorf(codes.Internal, "failed to shorten URL: %v", err)
 	}
 
-	return &proto.URLShortenResponse{Result: shortURL}, nil
+	return proto.URLShortenResponse_builder{Result: shortURL}.Build(), nil
 }
 
 func (s *ShortenerGRPCServer) ExpandURL(ctx context.Context, req *proto.URLExpandRequest) (*proto.URLExpandResponse, error) {
@@ -50,7 +50,7 @@ func (s *ShortenerGRPCServer) ExpandURL(ctx context.Context, req *proto.URLExpan
 		return nil, status.Errorf(codes.Internal, "failed to expand URL: %v", err)
 	}
 
-	return &proto.URLExpandResponse{Result: originalURL}, nil
+	return proto.URLExpandResponse_builder{Result: originalURL}.Build(), nil
 }
 
 func (s *ShortenerGRPCServer) ListUserURLs(ctx context.Context, _ *emptypb.Empty) (*proto.UserURLsResponse, error) {
@@ -62,15 +62,20 @@ func (s *ShortenerGRPCServer) ListUserURLs(ctx context.Context, _ *emptypb.Empty
 		return nil, status.Errorf(codes.Internal, "failed to fetch user URLs: %v", err)
 	}
 
-	response := &proto.UserURLsResponse{
+	response := proto.UserURLsResponse_builder{
 		Url: make([]*proto.URLData, 0, len(userURLs)),
-	}
+	}.Build()
 
 	for _, item := range userURLs {
-		response.Url = append(response.Url, &proto.URLData{
-			ShortUrl:    item.ShortURL,
-			OriginalUrl: item.OriginalURL,
-		})
+		response.SetUrl(
+			append(
+				response.GetUrl(),
+				proto.URLData_builder{
+					ShortUrl:    item.ShortURL,
+					OriginalUrl: item.OriginalURL,
+				}.Build(),
+			),
+		)
 	}
 
 	return response, nil

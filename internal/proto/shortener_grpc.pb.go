@@ -2,13 +2,12 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             v7.35.1
-// source: internal/proto/shortener.proto
+// source: proto/shortener.proto
 
 package proto
 
 import (
 	context "context"
-
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -195,5 +194,5 @@ var ShortenerService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "internal/proto/shortener.proto",
+	Metadata: "proto/shortener.proto",
 }
