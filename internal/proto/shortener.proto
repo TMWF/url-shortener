@@ -25,7 +25,7 @@ message URLExpandRequest {
 }
 
 message URLExpandResponse {
-  string result = 2; // Примечание: в вашем описании был id=1, тут result=2. Оставляем строго соответствующим вашему ТЗ.
+  string result = 2;
 }
 
 message UserURLsResponse {
