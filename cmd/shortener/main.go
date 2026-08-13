@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -16,14 +17,18 @@ import (
 	"github.com/TMWF/url-shortener/internal/audit"
 	"github.com/TMWF/url-shortener/internal/config"
 	"github.com/TMWF/url-shortener/internal/database"
+	"github.com/TMWF/url-shortener/internal/grpcserver"
+	"github.com/TMWF/url-shortener/internal/grpcserver/interceptors"
 	"github.com/TMWF/url-shortener/internal/handler"
 	"github.com/TMWF/url-shortener/internal/logger"
 	"github.com/TMWF/url-shortener/internal/middleware"
+	"github.com/TMWF/url-shortener/internal/proto"
 	"github.com/TMWF/url-shortener/internal/repository"
 	"github.com/TMWF/url-shortener/internal/service"
 	"github.com/TMWF/url-shortener/internal/util"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
+	"google.golang.org/grpc"
 )
 
 var (
@@ -68,7 +73,7 @@ func main() {
 		defer file.Close()
 	}
 
-	router := createRouter(cfg, db, auditFile)
+	router, grpcServer := createRouterAndGrpcServer(cfg, db, auditFile)
 	logger.GetLogger().Info("Starting server on port " + cfg.ServerHost)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
@@ -81,6 +86,18 @@ func main() {
 		Addr:    cfg.ServerHost,
 		Handler: router,
 	}
+
+	grpcListener, err := net.Listen("tcp", cfg.GrpcAddress)
+	if err != nil {
+		logger.GetLogger().Fatal("Failed to listen for gRPC", zap.Error(err))
+	}
+
+	go func() {
+		logger.GetLogger().Info("Starting gRPC server", zap.String("address", cfg.GrpcAddress))
+		if err := grpcServer.Serve(grpcListener); err != nil && !errors.Is(err, grpc.ErrServerStopped) {
+			cancel(err)
+		}
+	}()
 
 	go func() {
 		if cfg.EnableHttps {
@@ -120,13 +137,16 @@ func main() {
 	} else {
 		logger.GetLogger().Info("HTTP server stopped successfully")
 	}
+
+	logger.GetLogger().Info("Stopping gRPC server...")
+	grpcServer.GracefulStop()
 }
 
-func createRouter(config *config.Config, db *sql.DB, auditFile *os.File) http.Handler {
+func createRouterAndGrpcServer(config *config.Config, db *sql.DB, auditFile *os.File) (http.Handler, *grpc.Server) {
 	storage := repository.GetStorage(config, db)
 	jwtHelper := util.NewJWTHelper(config)
 	urlService := service.NewURLService(storage, config)
-	urlHandler := handler.NewURLHandler(urlService, jwtHelper)
+	urlHandler := handler.NewURLHandlerWithTrustedSubnet(urlService, jwtHelper, config.TrustedSubnet)
 
 	if auditFile != nil {
 		localAuditeventHandler := audit.NewLocalAuditEventHandler(auditFile)
@@ -138,6 +158,9 @@ func createRouter(config *config.Config, db *sql.DB, auditFile *os.File) http.Ha
 		urlHandler.RegisterObserver(remoteAuditEventHandler)
 	}
 
+	grpcServer := grpc.NewServer(grpc.UnaryInterceptor(interceptors.AuthInterceptor(config)))
+	proto.RegisterShortenerServiceServer(grpcServer, grpcserver.NewShortenerGRPCServer(urlService))
+
 	router := chi.NewRouter()
 	router.Use(middleware.JwtTokenMiddleware(config))
 	router.Use(middleware.RequestLoggerMiddleware(logger.GetLogger()))
@@ -148,6 +171,7 @@ func createRouter(config *config.Config, db *sql.DB, auditFile *os.File) http.Ha
 	router.Get(`/api/user/urls`, urlHandler.GetUserURLs)
 	router.Delete(`/api/user/urls`, urlHandler.DeleteUserURLs)
 	router.Get(`/{id}`, urlHandler.GetOriginalURL)
+	router.Get(`/api/internal/stats`, urlHandler.GetStats)
 
 	if dbStorage, ok := storage.(repository.DBStorage); ok {
 		pingService := service.NewPingDBService(dbStorage)
@@ -155,7 +179,7 @@ func createRouter(config *config.Config, db *sql.DB, auditFile *os.File) http.Ha
 		router.Get(`/ping`, pingHandler.PingDB)
 	}
 
-	return router
+	return router, grpcServer
 }
 
 func printBuildInfo() {

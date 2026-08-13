@@ -24,7 +24,7 @@ func JwtTokenMiddleware(config *config.Config) func(next http.Handler) http.Hand
 				logger.GetLogger().Info("Got token from the cookie",
 					zap.String("Encrypted token", token),
 				)
-				userID, err := getUserID(token, config)
+				userID, err := GetUserID(token, config)
 				if err != nil {
 					logger.GetLogger().Error("Error occured while parsing jwtToken", zap.Error(err))
 				} else {
@@ -40,7 +40,7 @@ func JwtTokenMiddleware(config *config.Config) func(next http.Handler) http.Hand
 	}
 }
 
-func getUserID(tokenString string, config *config.Config) (int, error) {
+func GetUserID(tokenString string, config *config.Config) (int, error) {
 	claims := &model.Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims,
 		func(t *jwt.Token) (interface{}, error) {

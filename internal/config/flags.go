@@ -24,6 +24,8 @@ type Config struct {
 	CertFilepath         string `env:"CERT_FILE_PATH"`
 	KeyFilePath          string `env:"KEY_FILE_PATH"`
 	ConfigFilePath       string `env:"CONFIG"`
+	TrustedSubnet        string `env:"TRUSTED_SUBNET"`
+	GrpcAddress          string `env:"GRPC_ADDRESS"`
 	db.PostgreSQLConfig
 	UserJWTConfig
 }
@@ -44,6 +46,8 @@ func InitialiseConfigs() *Config {
 	var configFilePath string
 	var certFilePath string
 	var keyFilePath string
+	var trustedSubnet string
+	var grpcAddress string
 
 	flag.StringVar(&serverHostFlag, "a", "", "address and port to run server")
 	flag.StringVar(&baseURLFlag, "b", "", "address and port to run server")
@@ -59,6 +63,8 @@ func InitialiseConfigs() *Config {
 	flag.StringVar(&secretKey, "sk", "supersecretkey", "JWT secret key")
 	flag.StringVar(&cConfigPathFlag, "c", "", "config file path")
 	flag.StringVar(&configFilePath, "config", "", "config file path")
+	flag.StringVar(&trustedSubnet, "t", "", "можно передать строковое представление бесклассовой адресации (CIDR)")
+	flag.StringVar(&grpcAddress, "ga", "localhost:3200", "default grpc server address")
 	flag.Parse()
 
 	err := env.Parse(cfg)
@@ -83,6 +89,13 @@ func InitialiseConfigs() *Config {
 			logger.GetLogger().Warn("Warning: failed to load config from JSON file", zap.Error(err))
 		} else {
 			jsonConfig = *temp
+		}
+	}
+
+	if cfg.TrustedSubnet == "" {
+		cfg.TrustedSubnet = trustedSubnet
+		if cfg.TrustedSubnet == "" {
+			cfg.TrustedSubnet = jsonConfig.TrustedSubnet
 		}
 	}
 
@@ -130,6 +143,10 @@ func InitialiseConfigs() *Config {
 			logger.GetLogger().Debug("Setting database config from flag value")
 			cfg.DatabaseDSN = jsonConfig.DatabaseDSN
 		}
+	}
+
+	if cfg.GrpcAddress == "" {
+		cfg.GrpcAddress = grpcAddress
 	}
 
 	if cfg.SecretKey == "" {

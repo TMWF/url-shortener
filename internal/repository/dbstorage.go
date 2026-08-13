@@ -22,6 +22,7 @@ type DBStorage interface {
 	Storage
 	PingDB() error
 	DeleteUserURLs([]model.DeleteUserURLsJobModel) error
+	CountUsersAndURLs(ctx context.Context) (*model.StatsModel, error)
 }
 
 type dbStorageImpl struct {
@@ -271,4 +272,19 @@ func (dbs *dbStorageImpl) SaveUser(ctx context.Context) (int, error) {
 	}
 
 	return userID, nil
+}
+
+func (dbs *dbStorageImpl) CountUsersAndURLs(ctx context.Context) (*model.StatsModel, error) {
+	var statsModel model.StatsModel
+
+	row := dbs.db.QueryRowContext(ctx, "SELECT (SELECT COUNT(*) FROM urls) AS urls_count, (SELECT COUNT(*) FROM users) AS users_count")
+
+	if err := row.Scan(&statsModel.URLs, &statsModel.Users); err != nil {
+		logger.GetLogger().Error("Error occured while getting data from database",
+			zap.String("original error message", err.Error()),
+		)
+		return nil, err
+	}
+
+	return &statsModel, nil
 }

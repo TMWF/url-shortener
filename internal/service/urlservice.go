@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/TMWF/url-shortener/internal/config"
@@ -63,6 +64,8 @@ type URLService interface {
 	// Используется, когда для текущего запроса необходимо создать или
 	// зарегистрировать пользователя.
 	SaveUser(ctx context.Context) (int, error)
+
+	CountUsersAndURLs(ctx context.Context) (*model.StatsModel, error)
 }
 
 type defaultURLService struct {
@@ -202,4 +205,14 @@ func (s *defaultURLService) GetUserURLs(ctx context.Context) ([]model.GetUserURL
 
 func (s *defaultURLService) SaveUser(ctx context.Context) (int, error) {
 	return s.storage.SaveUser(ctx)
+}
+
+func (s *defaultURLService) CountUsersAndURLs(ctx context.Context) (*model.StatsModel, error) {
+	dbStorage, ok := s.storage.(repository.DBStorage)
+
+	if !ok {
+		return nil, fmt.Errorf("not dbStorage")
+	}
+
+	return dbStorage.CountUsersAndURLs(ctx)
 }

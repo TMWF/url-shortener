@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -25,6 +26,7 @@ type urlHandler struct {
 	urlService          service.URLService
 	auditEventObservers map[string]RequestEventObserver
 	observerSemaphores  map[string]chan struct{}
+	ipNet               *net.IPNet
 }
 
 var _ RequestEventPublisher = (*urlHandler)(nil)
@@ -87,6 +89,24 @@ func NewURLHandler(service service.URLService, jwtHelper util.UserJWTBuilder) *u
 	return &urlHandler{
 		urlService: service,
 		jwtHelper:  jwtHelper,
+	}
+}
+
+func NewURLHandlerWithTrustedSubnet(service service.URLService, jwtHelper util.UserJWTBuilder, trustedSubnet string) *urlHandler {
+	var ipNet *net.IPNet
+	if trustedSubnet != "" {
+		_, innerIpNet, err := net.ParseCIDR(trustedSubnet)
+		if err != nil {
+			logger.GetLogger().Warn("invalid trusted_subnet CIDR format", zap.String("cidr", trustedSubnet), zap.Error(err))
+		} else {
+			ipNet = innerIpNet
+		}
+	}
+
+	return &urlHandler{
+		urlService: service,
+		jwtHelper:  jwtHelper,
+		ipNet:      ipNet,
 	}
 }
 
@@ -580,6 +600,50 @@ func (h *urlHandler) DeleteUserURLs(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusAccepted)
+}
+
+func (h *urlHandler) GetStats(w http.ResponseWriter, req *http.Request) {
+
+	if h.ipNet == nil {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+
+	xRealIP := req.Header.Get("X-Real-IP")
+	if xRealIP == "" {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+
+	clientIP := net.ParseIP(xRealIP)
+	if clientIP == nil {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+
+	if !h.ipNet.Contains(clientIP) {
+		http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+		return
+	}
+
+	response, err := h.urlService.CountUsersAndURLs(req.Context())
+	if err != nil {
+		logger.GetLogger().Error("Error occured while getting stats", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	responseBody, err := json.Marshal(response)
+	if err != nil {
+		logger.GetLogger().Error("Error occured while marshaling json", zap.Error(err))
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Content-Length", strconv.Itoa(len(responseBody)))
+	w.WriteHeader(http.StatusOK)
+	w.Write(responseBody)
 }
 
 func (h *urlHandler) getContextWithUserIDIfNeeded(ctx context.Context) (context.Context, error) {
